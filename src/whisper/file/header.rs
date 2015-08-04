@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use mmap::Mmap;
+
 use byteorder::{ ByteOrder, BigEndian, ReadBytesExt };
 
 use super::archive::{ self, Archive };
@@ -30,7 +33,7 @@ impl Header {
 		Header::new(aggregation_type_u32, max_retention, x_files_factor)
 	}
 
-	pub fn borrow_archives<'a>(&self, mmap_data: &'a [u8]) -> Vec<Archive<'a>> {
+	pub fn borrow_archives(&self, mmap_data: &Rc<Mmap>) -> Vec<Archive> {
 		let archive_count = BigEndian::read_u32(&mmap_data[12..17]) as usize;
 
 		let archives : Vec<Archive> = {
@@ -45,18 +48,17 @@ impl Header {
 				let seconds_per_point = BigEndian::read_u32(&archive_info_chunk[4..9]);
 				let points = BigEndian::read_u32(&archive_info_chunk[8..]) as usize;
 
-				let archive_slice = {
+				let (archive_start, archive_end) = {
 					let archive_size = points*point::POINT_SIZE_ON_DISK;
 					let archive_end = archive_offset_cursor+archive_size+1;
-					let archive_slice = if archive_end > mmap_data.len() {
-						&mmap_data[ archive_offset_cursor ..]
+					if archive_end > mmap_data.len() {
+						(archive_offset_cursor, None)
 					} else {
-						&mmap_data[ archive_offset_cursor .. archive_offset_cursor+archive_size+1 ]
-					};
-					archive_slice
+						(archive_offset_cursor, Some(archive_offset_cursor+archive_size+1) )
+					}
 				};
 
-				Archive::new(seconds_per_point, points, archive_slice)
+				Archive::new(seconds_per_point, points, mmap_data.clone(), archive_start, archive_end)
 			}).collect()
 		};
 
