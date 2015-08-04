@@ -1,0 +1,13 @@
+[package]
+name = "whisper_mmap"
+version = "0.1.0"
+authors = ["Xavier Lange <xrlange@gmail.com>"]
+
+[dependencies.mmap]
+git = "https://github.com/danburkert/mmap.git"
+
+[[bin]]
+name="mapit"
+
+[dependencies]
+byteorder = "*"
