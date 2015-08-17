@@ -1,33 +1,39 @@
-use std::path::PathBuf;
+use std::path::{ Path, PathBuf };
+use std::cell::RefCell;
 use std::rc::Rc;
 
-use mmap::{Mmap, Protection};
+use mmap::{Mmap, MmapView, Protection};
 
 mod header;
 mod archive;
 
 use self::header::Header;
 use self::archive::Archive;
+use super::point::Point;
 
 pub struct WhisperFile {
 	pub path: PathBuf,
-	pub mmap: Rc<Mmap>,
 	pub header: Header,
 	pub archives: Vec< Archive >,
 }
 
 impl WhisperFile {
-	pub fn open(path: PathBuf) -> WhisperFile {
-		let mmap = Rc::new( Mmap::open(&path, Protection::ReadWrite).unwrap() );
-		let header = Header::new_from_slice(&mmap);
-		let archives = header.borrow_archives(&mmap);
+	pub fn open(path: &Path) -> WhisperFile {
+		let mmap = Mmap::open_path(path, Protection::ReadWrite).unwrap();
+		let mmap_view = mmap.into_view();
 
-		let mut retval = WhisperFile {
-			path: path,
-			mmap: mmap,
+		let header = Header::new_from_slice(&mmap_view);
+		let archives = header.mmap_to_archives(mmap_view);
+
+		let whisper_file = WhisperFile {
+			path: path.to_path_buf(),
 			header: header,
 			archives: archives
 		};
-		retval
+		whisper_file
+	}
+
+	pub fn write(&mut self, point: Point) {
+		self.archives[0].write(point);
 	}
 }
