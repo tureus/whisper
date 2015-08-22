@@ -2,9 +2,12 @@
 name = "whisper"
 version = "0.1.0"
 authors = ["Xavier Lange <xrlange@gmail.com>"]
+description = "Whisper time series file support"
+license = "MIT"
+homepage = "https://www.github.com/tureus/graphite-rust"
+repository = "https://github.com/tureus/whisper.git"
 
-[dependencies.mmap]
-git = "https://github.com/danburkert/mmap.git"
+[dependencies.memmap]
 
 [[bin]]
 name="mapit"

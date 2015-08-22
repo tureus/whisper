@@ -1,13 +1,9 @@
-use std::cell::{ RefCell, Ref };
-use std::rc::Rc;
+use std::fmt;
 
-use std::ops::{ Deref /*,  DerefMut */ };
-use std::io::Cursor;
+use memmap::MmapView;
+use byteorder::{ByteOrder, BigEndian }; // , WriteBytesExt
 
-use mmap::MmapView;
-use byteorder::{ByteOrder, BigEndian, WriteBytesExt};
-
-use super::super::point::{Point, POINT_SIZE_ON_DISK};
+use super::super::point::{Point }; // , POINT_SIZE_ON_DISK
 
 // Index in to an archive, 0..points.len
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -21,6 +17,12 @@ pub struct Archive {
 	points: usize,
 
 	mmap_view: MmapView
+}
+
+impl fmt::Debug for Archive {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "an archive")
+    }
 }
 
 pub const ARCHIVE_INFO_SIZE : usize = 12;

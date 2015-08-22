@@ -1,7 +1,4 @@
-#![feature(alloc)]
-#![feature(rc_unique, rc_counts)]
-
-extern crate mmap;
+extern crate memmap;
 extern crate byteorder;
 
 mod whisper;

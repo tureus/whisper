@@ -1,8 +1,6 @@
 use std::path::{ Path, PathBuf };
-use std::cell::RefCell;
-use std::rc::Rc;
 
-use mmap::{Mmap, MmapView, Protection};
+use memmap::{Mmap, Protection};
 
 mod header;
 mod archive;
@@ -11,6 +9,7 @@ use self::header::Header;
 use self::archive::Archive;
 use super::point::Point;
 
+#[derive(Debug)]
 pub struct WhisperFile {
 	pub path: PathBuf,
 	pub header: Header,
