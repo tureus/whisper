@@ -5,7 +5,7 @@ use byteorder::{ ByteOrder, BigEndian, ReadBytesExt };
 use super::archive::{ self, Archive };
 use super::super::point;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AggregationType {
 	Unknown
 }
@@ -19,6 +19,9 @@ pub struct Header {
 
 pub const STATIC_HEADER_SIZE : usize = 12;
 
+// Hey hey, now this info junk is only internal. How nice!
+// Retention, points
+// (Seconds Per Point, Points)
 struct ArchiveInfo(u32,usize);
 
 impl Header {
@@ -30,8 +33,7 @@ impl Header {
 		}
 	}
 
-	pub fn new_from_slice(mmap_view: &MmapView) -> Header {
-		let mmap_data = unsafe { mmap_view.as_slice() };
+	pub fn new_from_slice(mmap_data: &[u8]) -> Header {
 		let aggregation_type_u32 = BigEndian::read_u32(&mmap_data[0..4]);
 		let max_retention = BigEndian::read_u32(&mmap_data[4..9]);
 		let x_files_factor = BigEndian::read_f32(&mmap_data[8..13]);
@@ -39,21 +41,27 @@ impl Header {
 		Header::new(aggregation_type_u32, max_retention, x_files_factor)
 	}
 
-	fn archive_count(&self, mmap_data: &MmapView) -> usize {
-		BigEndian::read_u32(&unsafe{ mmap_data.as_slice() }[12..17]) as usize
+	fn archive_count(&self, mmap_data: &[u8]) -> usize {
+		BigEndian::read_u32(&mmap_data[12..17]) as usize
 	}
 
 	pub fn mmap_to_archives(&self, mmap_data: MmapView) -> Vec<Archive> {
-		let archive_count = self.archive_count(&mmap_data);
-		let archive_infos = self.archive_infos(archive_count, &mmap_data);
+		let (archive_infos, archive_count) = {
+			let raw_data = &unsafe{ mmap_data.as_slice() }; // localize not safe stuff
+			let count = self.archive_count(raw_data);
+			let infos = Header::archive_infos(count, raw_data);
+			(infos, count)
+		};
 
-		// chop off the header from the mmap
+		// chop off the header and throw it away, we're done with it
 		let archive_start = STATIC_HEADER_SIZE + archive::ARCHIVE_INFO_SIZE*archive_count;
 		let (_,mut archive_data) = mmap_data.split_at(archive_start).unwrap();
 
-		// progressively cut down archive_data into each individual archive
 		let mut archives : Vec<Archive> = Vec::with_capacity(archive_count);
+		// use infos to progressively cut down archive_data into each individual archive
+		// or in the simple case of 1 archive just use the rest of the file
 		if archive_count > 1 {
+
 			let (archives_init,archive_last) = archive_infos.split_at(archive_infos.len()-1);
 			for info in archives_init {
 				let offset = info.1 * point::POINT_SIZE_ON_DISK;
@@ -63,29 +71,33 @@ impl Header {
 			}
 
 			archives.push( Archive::new(archive_last[0].0, archive_last[0].1, archive_data));
+
 		} else {
 
 			let archive = Archive::new(archive_infos[0].0, archive_infos[0].1, archive_data);
-			archives.push( archive )
+			archives.push( archive );
 		}
 
 		archives
 	}
 
-	fn archive_infos(&self, archive_count: usize, mmap: &MmapView) -> Vec<ArchiveInfo> {
+	fn archive_infos(archive_count: usize, all_header_data: &[u8]) -> Vec<ArchiveInfo> {
 		let mut archive_infos : Vec<ArchiveInfo> = Vec::with_capacity(archive_count);
-		{
-			let ai_start = 16;
-			let ai_end = 16 + archive::ARCHIVE_INFO_SIZE*archive_count;
-			let archive_info_slice = &unsafe{ mmap.as_slice() }[ ai_start .. ai_end ];
-			let chunks = archive_info_slice.chunks( archive::ARCHIVE_INFO_SIZE );
 
-			for archive_info_slice in chunks {
-				let _offset = BigEndian::read_u32(&archive_info_slice[0..4]);
-				let seconds_per_point = BigEndian::read_u32(&archive_info_slice[4..9]);
-				let points = BigEndian::read_u32(&archive_info_slice[8..]) as usize;
-				archive_infos.push(ArchiveInfo(seconds_per_point,points))
-			}
+		let ai_start = 16;
+		let ai_end = 16 + archive::ARCHIVE_INFO_SIZE*archive_count;
+
+		let chunks = {
+			let archive_info_slice = &all_header_data[ ai_start .. ai_end ];
+			archive_info_slice.chunks( archive::ARCHIVE_INFO_SIZE )
+		};
+
+		for archive_info_slice in chunks {
+			// we don't use offset because of how the MmapView is consumed in to smaller MmapViews
+			// let _offset = BigEndian::read_u32(&archive_info_slice[0..4]);
+			let seconds_per_point = BigEndian::read_u32(&archive_info_slice[4..9]);
+			let points = BigEndian::read_u32(&archive_info_slice[8..]) as usize;
+			archive_infos.push(ArchiveInfo(seconds_per_point,points));
 		}
 
 		archive_infos
@@ -96,8 +108,28 @@ impl Header {
 mod tests {
 	use super::*;
 
+	const header_data : [u8; 32] = [
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x51, 0x80, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x05, 0xa0, 0x00, 0x00, 0x00, 0x00
+	];
+
 	#[test]
-	fn test_stuff() {
-		assert!(1 == 2)
+	fn test_header_from_slice() {
+		let hdr = Header::new_from_slice(&header_data[..]);
+		assert_eq!(hdr._aggregation_type, AggregationType::Unknown);
+		assert_eq!(hdr._max_retention, 86400);
+		assert_eq!(hdr._x_files_factor, 0.5);
+		assert_eq!(hdr.archive_count(&header_data[..]), 1);
+
+		println!("parsed_header: {:?}", hdr);
+	}
+
+	#[test]
+	fn test_header_info() {
+		let infos = Header::archive_infos(1, &header_data[..]);
+		assert_eq!(infos.len(), 1);
+		let info = &infos[..][0];
+		assert_eq!(info.0, 60);
+		assert_eq!(info.1, 1440);
 	}
 }
