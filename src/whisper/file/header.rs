@@ -5,19 +5,19 @@ use byteorder::{ ByteOrder, BigEndian, ReadBytesExt };
 use super::archive::{ self, Archive };
 use super::super::point;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AggregationType {
 	Unknown
 }
 
 #[derive(Debug)]
 pub struct Header {
-	_aggregation_type: AggregationType,
-	_max_retention: u32,
-	_x_files_factor: f32,
+	aggregation_type: AggregationType,
+	max_retention: u32,
+	x_files_factor: f32,
 }
 
-pub const STATIC_HEADER_SIZE : usize = 12;
+pub const STATIC_HEADER_SIZE : usize = 16;
 
 // Hey hey, now this info junk is only internal. How nice!
 // Retention, points
@@ -25,14 +25,6 @@ pub const STATIC_HEADER_SIZE : usize = 12;
 struct ArchiveInfo(u32,usize);
 
 impl Header {
-	pub fn new(_: u32, max_ret: u32, xff: f32) -> Header {
-		Header {
-			_aggregation_type: AggregationType::Unknown,
-			_max_retention: max_ret,
-			_x_files_factor: xff
-		}
-	}
-
 	pub fn new_from_slice(mmap_data: &[u8]) -> Header {
 		let aggregation_type_u32 = BigEndian::read_u32(&mmap_data[0..4]);
 		let max_retention = BigEndian::read_u32(&mmap_data[4..9]);
@@ -40,13 +32,42 @@ impl Header {
 
 		Header::new(aggregation_type_u32, max_retention, x_files_factor)
 	}
+	
+	pub fn new(_: u32, max_ret: u32, xff: f32) -> Header {
+		Header {
+			aggregation_type: AggregationType::Unknown,
+			max_retention: max_ret,
+			x_files_factor: xff
+		}
+	}
 
+	#[inline]
 	fn archive_count(mmap_data: &[u8]) -> usize {
 		BigEndian::read_u32(&mmap_data[12..17]) as usize
 	}
 
+	#[inline]
+	fn archives_start(archive_count: usize) -> usize {
+		STATIC_HEADER_SIZE + archive::ARCHIVE_INFO_SIZE*archive_count
+	}
+
+	#[inline]
+	pub fn aggregation_type(&self) -> AggregationType {
+		self.aggregation_type.clone()
+	}
+
+	#[inline]
+	pub fn max_retention(&self) -> u32 {
+		self.max_retention
+	}
+
+	#[inline]
+	pub fn x_files_factor(&self) -> f32 {
+		self.x_files_factor
+	}
+
 	// Consumes MmapView to create Archives
-	pub fn mmap_to_archives(mmap_data: MmapView) -> Vec<Archive> {
+	pub fn mmap_to_archives(&self, mmap_data: MmapView) -> Vec<Archive> {
 		let (archive_infos, archive_count) = {
 			let raw_data = &unsafe{ mmap_data.as_slice() }; // localize not safe stuff
 			let count = Header::archive_count(raw_data);
@@ -55,8 +76,8 @@ impl Header {
 		};
 
 		// chop off the header and throw it away, we're done with it
-		let archive_start = STATIC_HEADER_SIZE + archive::ARCHIVE_INFO_SIZE*archive_count;
-		let (_,mut archive_data) = mmap_data.split_at(archive_start).unwrap();
+		let start = Header::archives_start(archive_count);
+		let (_,mut archive_data) = mmap_data.split_at(start).unwrap();
 
 		let mut archives : Vec<Archive> = Vec::with_capacity(archive_count);
 		// use infos to progressively cut down archive_data into each individual archive
@@ -102,63 +123,5 @@ impl Header {
 		}
 
 		archive_infos
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use std::io::Cursor;
-	use std::io::Write;
-	use memmap::{ Mmap, Protection };
-
-	// whisper-create.py blah.wsp 60:5
-	// hexdump -v -e '"0x" 1/1 "%02X, "' blah.wsp
-	const SAMPLE_FILE : [u8; 88] = [
-		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x2C,
-		0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-		0x00, 0x00, 0x00, 0x1C, 0x00, 0x00, 0x00, 0x3C,
-		0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	];
-
-	#[test]
-	fn test_header_from_slice() {
-		let hdr = Header::new_from_slice(&SAMPLE_FILE[..]);
-		assert_eq!(hdr._aggregation_type, AggregationType::Unknown);
-		assert_eq!(hdr._max_retention, 300);
-		assert_eq!(hdr._x_files_factor, 0.5);
-		assert_eq!(Header::archive_count(&SAMPLE_FILE[..]), 1);
-
-		println!("parsed_header: {:?}", hdr);
-	}
-
-	#[test]
-	fn test_header_info() {
-		let infos = Header::archive_infos(1, &SAMPLE_FILE[..]);
-		assert_eq!(infos.len(), 1);
-		let info = &infos[..][0];
-		assert_eq!(info.0, 60);
-		assert_eq!(info.1, 5);
-	}
-
-	#[test]
-	fn test_mmap_to_archives(){
-		let mut anon_mmap = Mmap::anonymous(SAMPLE_FILE.len(), Protection::ReadWrite).unwrap();
-		{
-			let mut slice : &mut [u8] = unsafe{ anon_mmap.as_mut_slice() };
-			let mut cursor = Cursor::new(slice);
-			cursor.write(&SAMPLE_FILE[..]).unwrap();			
-		}
-
-		let mmap_view = anon_mmap.into_view();
-		let archives = Header::mmap_to_archives(mmap_view);
-		assert_eq!(archives.len(), 1);
 	}
 }

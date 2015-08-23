@@ -1,15 +1,18 @@
 use std::fmt;
+use std::cmp;
 
 use memmap::MmapView;
-use byteorder::{ByteOrder, BigEndian }; // , WriteBytesExt
+use byteorder::{ByteOrder, BigEndian, WriteBytesExt };
+use std::io::{ Write, Cursor };
 
-use super::super::point::{Point }; // , POINT_SIZE_ON_DISK
+use super::super::point::{ self, Point }; // , POINT_SIZE_ON_DISK
 
 // Index in to an archive, 0..points.len
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct ArchiveIndex(pub u32);
 
 // A normalized timestamp. The thing you write in to the file.
+#[derive(Debug, PartialEq)]
 pub struct BucketName(pub u32);
 
 pub struct Archive {
@@ -25,6 +28,16 @@ impl fmt::Debug for Archive {
     }
 }
 
+impl cmp::PartialEq for Archive {
+	fn eq(&self, other: &Archive) -> bool {
+		false
+	}
+	fn ne(&self, other: &Archive) -> bool {
+		false
+	}
+}
+
+// offset + seconds_per_point + points
 pub const ARCHIVE_INFO_SIZE : usize = 12;
 
 impl Archive {
@@ -43,13 +56,26 @@ impl Archive {
 
 		let archive_index = self.archive_index(&bucket_name);
 
-		unimplemented!();
-		// {
-		// 	let dem_bytes : &mut[u8] = self.bytes_for_point_at_mut(&archive_index);
-		// 	let mut writer = Cursor::new(dem_bytes);
-		// 	writer.write_u32::<BigEndian>(bucket_name.0).unwrap();
-		// 	writer.write_f64::<BigEndian>(metric_value).unwrap();
-		// }
+		let mut mmap_data = unsafe{ self.mmap_view.as_mut_slice() };
+		let mut point_slice = &mut mmap_data[archive_index.0 as usize .. point::POINT_SIZE_ON_DISK];
+		let mut writer = Cursor::new(point_slice);
+		writer.write_u32::<BigEndian>(bucket_name.0).unwrap();
+		writer.write_f64::<BigEndian>(metric_value).unwrap();
+	}
+
+	#[inline]
+	pub fn seconds_per_point(&self) -> u32 {
+		self.seconds_per_point
+	}
+
+	#[inline]
+	pub fn points(&self) -> usize {
+		self.points
+	}
+
+	#[inline]
+	pub fn size(&self) -> usize {
+		self.mmap_view.len()
 	}
 
 	#[inline]
@@ -78,36 +104,68 @@ impl Archive {
     	let first_four_bytes = BigEndian::read_u32(&unsafe{ self.mmap_view.as_slice()}[0..5]);
     	BucketName( first_four_bytes )
     }
-
-	// fn bytes_for_point_at_mut(&mut self, ai: &ArchiveIndex) -> &mut [u8] {
-	// 	let point_start = (ai.0 as usize) * POINT_SIZE_ON_DISK;
-	// 	let point_end = point_start + POINT_SIZE_ON_DISK;
-	// 	if point_end > self.mmap.borrow().len() {
-	// 		&mut self[ point_start .. ]
-	// 	} else {
-	// 		&mut self[ point_start .. point_end ]
-	// 	}
-	// }
-
-	// fn bytes_for_point_at(&self, ai: &ArchiveIndex) -> Ref<&[u8]> {
-	// 	let point_start = (ai.0 as usize) * POINT_SIZE_ON_DISK;
-	// 	let point_end = point_start + POINT_SIZE_ON_DISK;
-	// 	let len = self.mmap_view.len();
-	// 	if point_end > len {
-	// 		&unsafe{ self.mmap_view.as_slice() }[ point_start .. ]
-	// 	} else {
-	// 		&unsafe{ self.mmap_view.as_slice() }[ point_start .. point_end ]
-	// 	}
-	// }
-
-
-
-	// pub fn write(&self, ai: ArchiveIndex, (_, _): (BucketName,f64)) {
-	// 	let _ = &self[ai];
-	// }
 }
 
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use super::super::super::point::Point;
+	use std::io::Cursor;
+	use std::io::Write;
+	use memmap::{ Mmap, Protection };
 
+	// whisper-create.py blah.wsp 60:5
+	// hexdump -v -e '"0x" 1/1 "%02X, "' blah.wsp
+	const SAMPLE_FILE : [u8; 88] = [
+	//  agg type
+		0x00, 0x00, 0x00, 0x01,
+	//  max ret
+		0x00, 0x00, 0x01, 0x2C,
+	// x_files_factor
+		0x3F, 0x00, 0x00, 0x00,
+	// archive_count
+		0x00, 0x00, 0x00, 0x01,
+	// archive_info[0].offset
+		0x00, 0x00, 0x00, 0x1C,
+	// archive_info[0].seconds_per_point
+		0x00, 0x00, 0x00, 0x3C,
+	// archive_info[0].points
+		0x00, 0x00, 0x00, 0x05,
+	// archive[0] data
+		0x55, 0xD9, 0x33, 0xE8, 0x40, 0x59, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00
+	];
+
+	#[test]
+	fn test_write(){
+		let archive_data = &SAMPLE_FILE[28..];
+		assert_eq!(archive_data[0], 0x55);
+
+		let mut anon_mmap = Mmap::anonymous(archive_data.len(), Protection::ReadWrite).unwrap();
+		{
+			let slice : &mut [u8] = unsafe{ anon_mmap.as_mut_slice() };
+			let mut cursor = Cursor::new(slice);
+			cursor.write(&archive_data[..]).unwrap();
+		};
+
+		let anon_view = anon_mmap.into_view();
+		let mut archive = Archive::new(60, 5, anon_view);
+		assert_eq!(archive.anchor_bucket_name(), BucketName(1440297960) );
+		assert_eq!(archive.seconds_per_point(), 60);
+		assert_eq!(archive.points(), 5);
+		assert_eq!(archive.size(), 60);
+		assert_eq!(archive.archive_index(&BucketName(1440297960)), ArchiveIndex(0));
+
+		let point = Point(1440297960,5.0);
+		archive.write(point)
+	}
+}
 
 // impl DerefMut for Archive {
 // 	fn deref_mut(&mut self) -> &mut [u8] {
