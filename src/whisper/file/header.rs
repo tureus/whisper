@@ -41,14 +41,15 @@ impl Header {
 		Header::new(aggregation_type_u32, max_retention, x_files_factor)
 	}
 
-	fn archive_count(&self, mmap_data: &[u8]) -> usize {
+	fn archive_count(mmap_data: &[u8]) -> usize {
 		BigEndian::read_u32(&mmap_data[12..17]) as usize
 	}
 
-	pub fn mmap_to_archives(&self, mmap_data: MmapView) -> Vec<Archive> {
+	// Consumes MmapView to create Archives
+	pub fn mmap_to_archives(mmap_data: MmapView) -> Vec<Archive> {
 		let (archive_infos, archive_count) = {
 			let raw_data = &unsafe{ mmap_data.as_slice() }; // localize not safe stuff
-			let count = self.archive_count(raw_data);
+			let count = Header::archive_count(raw_data);
 			let infos = Header::archive_infos(count, raw_data);
 			(infos, count)
 		};
@@ -107,29 +108,57 @@ impl Header {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use std::io::Cursor;
+	use std::io::Write;
+	use memmap::{ Mmap, Protection };
 
-	const header_data : [u8; 32] = [
-		0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x51, 0x80, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-		0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x05, 0xa0, 0x00, 0x00, 0x00, 0x00
+	// whisper-create.py blah.wsp 60:5
+	// hexdump -v -e '"0x" 1/1 "%02X, "' blah.wsp
+	const SAMPLE_FILE : [u8; 88] = [
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x2C,
+		0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		0x00, 0x00, 0x00, 0x1C, 0x00, 0x00, 0x00, 0x3C,
+		0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	];
 
 	#[test]
 	fn test_header_from_slice() {
-		let hdr = Header::new_from_slice(&header_data[..]);
+		let hdr = Header::new_from_slice(&SAMPLE_FILE[..]);
 		assert_eq!(hdr._aggregation_type, AggregationType::Unknown);
-		assert_eq!(hdr._max_retention, 86400);
+		assert_eq!(hdr._max_retention, 300);
 		assert_eq!(hdr._x_files_factor, 0.5);
-		assert_eq!(hdr.archive_count(&header_data[..]), 1);
+		assert_eq!(Header::archive_count(&SAMPLE_FILE[..]), 1);
 
 		println!("parsed_header: {:?}", hdr);
 	}
 
 	#[test]
 	fn test_header_info() {
-		let infos = Header::archive_infos(1, &header_data[..]);
+		let infos = Header::archive_infos(1, &SAMPLE_FILE[..]);
 		assert_eq!(infos.len(), 1);
 		let info = &infos[..][0];
 		assert_eq!(info.0, 60);
-		assert_eq!(info.1, 1440);
+		assert_eq!(info.1, 5);
+	}
+
+	#[test]
+	fn test_mmap_to_archives(){
+		let mut anon_mmap = Mmap::anonymous(SAMPLE_FILE.len(), Protection::ReadWrite).unwrap();
+		{
+			let mut slice : &mut [u8] = unsafe{ anon_mmap.as_mut_slice() };
+			let mut cursor = Cursor::new(slice);
+			cursor.write(&SAMPLE_FILE[..]).unwrap();			
+		}
+
+		let mmap_view = anon_mmap.into_view();
+		let archives = Header::mmap_to_archives(mmap_view);
+		assert_eq!(archives.len(), 1);
 	}
 }
