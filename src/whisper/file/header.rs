@@ -66,7 +66,7 @@ impl Header {
 		self.x_files_factor
 	}
 
-	// Consumes MmapView to create Archives
+	// Consumes MmapView to create Archives with smaller MmapView
 	pub fn mmap_to_archives(&self, mmap_data: MmapView) -> Vec<Archive> {
 		let (archive_infos, archive_count) = {
 			let raw_data = &unsafe{ mmap_data.as_slice() }; // localize not safe stuff
