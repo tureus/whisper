@@ -86,7 +86,7 @@ impl Header {
 
 			let (archives_init,archive_last) = archive_infos.split_at(archive_infos.len()-1);
 			for info in archives_init {
-				let offset = info.1 * point::POINT_SIZE_ON_DISK;
+				let offset = info.1 * point::POINT_SIZE;
 				let (this_archive,the_rest) = archive_data.split_at(offset).unwrap();
 				archives.push(Archive::new(info.0, info.1, this_archive));
 				archive_data = the_rest;

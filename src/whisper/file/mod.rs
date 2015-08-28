@@ -3,7 +3,7 @@ use std::path::{ Path, PathBuf };
 use memmap::{Mmap, Protection};
 
 mod header;
-mod archive;
+pub mod archive;
 
 use self::header::Header;
 use self::archive::Archive;
@@ -17,6 +17,10 @@ pub struct WhisperFile {
 }
 
 impl WhisperFile {
+	// pub fn new(path: &Path) -> WhisperFile {
+		
+	// }
+
 	pub fn open(path: &Path) -> WhisperFile {
 		let mmap = Mmap::open_path(path, Protection::ReadWrite).unwrap();
 		WhisperFile::open_mmap(path, mmap)

@@ -2,10 +2,12 @@ use std::fmt;
 use std::cmp;
 
 use memmap::MmapView;
-use byteorder::{ByteOrder, BigEndian, WriteBytesExt };
-use std::io::{ Write, Cursor };
+use byteorder::{ByteOrder, BigEndian };
 
-use super::super::point::{ self, Point }; // , POINT_SIZE_ON_DISK
+use super::super::point::{ self, Point }; // , POINT_SIZE
+
+// offset + seconds_per_point + points
+pub const ARCHIVE_INFO_SIZE : usize = 12;
 
 // Index in to an archive, 0..points.len
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -28,9 +30,6 @@ impl fmt::Debug for Archive {
     }
 }
 
-// offset + seconds_per_point + points
-pub const ARCHIVE_INFO_SIZE : usize = 12;
-
 impl Archive {
 	pub fn new(seconds_per_point: u32, points: usize, mmap_view: MmapView) -> Archive {
 
@@ -39,59 +38,52 @@ impl Archive {
 			points: points,
 			mmap_view: mmap_view
 		}
+		
 	}
 
 	pub fn write(&mut self, point: Point ) {
 		let bucket_name = self.bucket_name(point.0);
-		let metric_value = point.1;
 
 		let archive_index = self.archive_index(&bucket_name);
-		println!("index: {}", archive_index.0);
 
-		let start = archive_index.0 as usize * point::POINT_SIZE_ON_DISK;
-		let end = archive_index.0 as usize * point::POINT_SIZE_ON_DISK + point::POINT_SIZE_ON_DISK;
-		println!("writing [{} .. {}]", start, end);
+		let start = archive_index.0 as usize * point::POINT_SIZE;
+		let end = archive_index.0 as usize * point::POINT_SIZE + point::POINT_SIZE;
 
 		let mut point_slice = &mut self.mut_slice()[start .. end];
-		let mut writer = Cursor::new(point_slice);
-		writer.write_u32::<BigEndian>(bucket_name.0).unwrap();
-		writer.write_f64::<BigEndian>(metric_value).unwrap();
+		point.write_to_slice(bucket_name, point_slice);
 	}
 
 	pub fn read_points(&self, from: BucketName, points: &mut[Point]) {
 		let start = self.archive_index(&from);
-		let mut data_needed = points.len()*point::POINT_SIZE_ON_DISK as usize;
+		let mut data_needed = points.len()*point::POINT_SIZE as usize;
 
-		let end_of_read = (start.0 as usize)*point::POINT_SIZE_ON_DISK + data_needed;
+		let end_of_read = (start.0 as usize)*point::POINT_SIZE + data_needed;
 		if end_of_read > self.size() {
 			let overflow_bytes = end_of_read-self.size();
 
 			let mut index = 0;
-			let first_start = start.0 as usize * point::POINT_SIZE_ON_DISK;
+			let first_start = start.0 as usize * point::POINT_SIZE;
 			let first_end = self.size();
 			let first_data = &self.slice()[first_start .. first_end];
-			println!("reading(1) [{} .. {}]", first_start, first_end);
 
 			let second_start = 0;
 			let second_end = overflow_bytes;
 			let second_data = &self.slice()[second_start .. second_end];
-			println!("reading(2) [{} .. {}]", second_start, second_end);
 
-			for pt_data in first_data.chunks(point::POINT_SIZE_ON_DISK) {
+			for pt_data in first_data.chunks(point::POINT_SIZE) {
 				points[index] = Point::new_from_slice(pt_data);
 				index = index + 1;
 			};
-			for pt_data in second_data.chunks(point::POINT_SIZE_ON_DISK) {
+			for pt_data in second_data.chunks(point::POINT_SIZE) {
 				points[index] = Point::new_from_slice(pt_data);
 				index = index + 1;
 			};
 		} else {
-			let start_index = start.0 as usize * point::POINT_SIZE_ON_DISK;
+			let start_index = start.0 as usize * point::POINT_SIZE;
 			let end_index = end_of_read;
 
-			println!("reading(3) [{} .. {}]", start_index, end_index);
 			let points_data = &self.slice()[start_index .. end_index];
-			for (i,pt_data) in points_data.chunks(point::POINT_SIZE_ON_DISK).enumerate() {
+			for (i,pt_data) in points_data.chunks(point::POINT_SIZE).enumerate() {
 				// TODO: should we instead pass the point in to the constructor?
 				points[i] = Point::new_from_slice(pt_data)
 			};

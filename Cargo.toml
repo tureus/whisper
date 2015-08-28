@@ -14,3 +14,4 @@ name="mapit"
 
 [dependencies]
 byteorder = "*"
+regex = "*"
