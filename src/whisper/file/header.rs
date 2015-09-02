@@ -1,20 +1,37 @@
 use memmap::MmapView;
-
 use byteorder::{ ByteOrder, BigEndian, ReadBytesExt };
+
+use std::fs::File;
 
 use super::archive::{ self, Archive };
 use super::super::point;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum AggregationType {
+	Average,
 	Unknown
+}
+
+impl AggregationType {
+	pub fn from_u32(val: u32) -> AggregationType {
+		match val {
+			_ => AggregationType::Unknown
+		}
+	}
+
+	pub fn to_u32(&self) -> u32 {
+		match *self {
+			AggregationType::Average => 0,
+			AggregationType::Unknown => 10
+		}
+	}
 }
 
 #[derive(Debug)]
 pub struct Header {
-	aggregation_type: AggregationType,
-	max_retention: u32,
-	x_files_factor: f32,
+	pub aggregation_type: AggregationType,
+	pub max_retention: u32,
+	pub x_files_factor: f32,
 }
 
 pub const STATIC_HEADER_SIZE : usize = 16;
@@ -30,12 +47,14 @@ impl Header {
 		let max_retention = BigEndian::read_u32(&mmap_data[4..9]);
 		let x_files_factor = BigEndian::read_f32(&mmap_data[8..13]);
 
-		Header::new(aggregation_type_u32, max_retention, x_files_factor)
+		let agg_type = AggregationType::from_u32(aggregation_type_u32);
+
+		Header::new(agg_type, max_retention, x_files_factor)
 	}
 	
-	pub fn new(_: u32, max_ret: u32, xff: f32) -> Header {
+	pub fn new(agg_type: AggregationType, max_ret: u32, xff: f32) -> Header {
 		Header {
-			aggregation_type: AggregationType::Unknown,
+			aggregation_type: agg_type,
 			max_retention: max_ret,
 			x_files_factor: xff
 		}
@@ -47,7 +66,7 @@ impl Header {
 	}
 
 	#[inline]
-	fn archives_start(archive_count: usize) -> usize {
+	pub fn archives_start(archive_count: usize) -> usize {
 		STATIC_HEADER_SIZE + archive::ARCHIVE_INFO_SIZE*archive_count
 	}
 

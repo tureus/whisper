@@ -33,12 +33,12 @@ impl Schema {
         Schema{ retention_policies: retention_policies }
     }
 
-    pub fn header_size_on_disk(&self) -> u64 {
-        METADATA_DISK_SIZE as u64 +
-        (ARCHIVE_INFO_SIZE*self.retention_policies.len()) as u64
+    pub fn header_size_on_disk(&self) -> u32 {
+        METADATA_DISK_SIZE as u32 +
+        (ARCHIVE_INFO_SIZE*self.retention_policies.len()) as u32
     }
 
-    pub fn size_on_disk(&self) -> u64 {
+    pub fn size_on_disk(&self) -> u32 {
         let retentions_disk_size = self.retention_policies.iter().fold(0, |tally, policy| {
             // debug!("policy: {:?} size on disk: {}", policy, policy.size_on_disk());
             tally + policy.size_on_disk()
@@ -47,7 +47,7 @@ impl Schema {
         self.header_size_on_disk() + retentions_disk_size
     }
 
-    pub fn max_retention(&self) -> u64 {
+    pub fn max_retention(&self) -> u32 {
         if self.retention_policies.len() == 0 {
             0
         } else {
@@ -89,8 +89,8 @@ mod tests {
             retention_policies: vec![]
         };
 
-        let expected = METADATA_DISK_SIZE as u64
-                + ARCHIVE_INFO_SIZE as u64 * 2
+        let expected = METADATA_DISK_SIZE as u32
+                + ARCHIVE_INFO_SIZE as u32 * 2
                 + 60*12 // first policy size
                 + 1*12; // second policy size
 

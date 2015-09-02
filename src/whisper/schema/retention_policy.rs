@@ -14,8 +14,8 @@ use std::process::exit;
 // be collapsed in to ArchiveInfo? Possibly.
 #[derive(Debug, Clone, Copy)]
 pub struct RetentionPolicy {
-    pub precision: u64,
-    pub retention: u64
+    pub precision: u32,
+    pub retention: u32
 }
 
 impl RetentionPolicy {
@@ -32,12 +32,12 @@ impl RetentionPolicy {
     }
 
     // TODO how do we guarantee even divisibility?
-    pub fn points(&self) -> u64 {
+    pub fn points(&self) -> u32 {
         self.retention / self.precision
     }
 
-    pub fn size_on_disk(&self) -> u64 {
-        self.points() * POINT_SIZE as u64
+    pub fn size_on_disk(&self) -> u32 {
+        self.points() * POINT_SIZE as u32
     }
 
     pub fn write(&self, mut file: &File, offset: u64) {
@@ -67,12 +67,12 @@ fn retention_capture_to_pair(regex_match: regex::Captures) -> Option<RetentionPo
 
     if precision_opt.is_some() && retention_opt.is_some() {
         let precision = {
-            let base_precision = precision_opt.unwrap().parse::<u64>().unwrap();
+            let base_precision = precision_opt.unwrap().parse::<u32>().unwrap();
             base_precision * mult_str_to_num(precision_mult)
         };
 
         let retention = {
-            let base_retention = retention_opt.unwrap().parse::<u64>().unwrap();
+            let base_retention = retention_opt.unwrap().parse::<u32>().unwrap();
 
             match retention_mult {
                 Some(mult_str) => {
@@ -98,7 +98,7 @@ fn retention_capture_to_pair(regex_match: regex::Captures) -> Option<RetentionPo
     }
 }
 
-fn mult_str_to_num(mult_str: &str) -> u64 {
+fn mult_str_to_num(mult_str: &str) -> u32 {
     // TODO: is this exactly how whisper does it?
     match mult_str {
         "s" => 1,
@@ -128,7 +128,7 @@ mod tests {
         };
 
         let expected = five_minute_retention.size_on_disk();
-        assert_eq!(expected, 5*POINT_SIZE as u64);
+        assert_eq!(expected, 5*POINT_SIZE as u32);
     }
 
     #[test]
