@@ -26,7 +26,7 @@ pub struct WhisperFile {
 }
 
 impl WhisperFile {
-	pub fn new(path: &Path, schema: Schema) -> io::Result<WhisperFile> {
+	pub fn new(path: &Path, schema: &Schema) -> io::Result<WhisperFile> {
         let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path));
 
 		// Allocate space on disk (could be costly!)
@@ -52,7 +52,7 @@ impl WhisperFile {
 		}
 
 		let mut archive_offset = Header::archives_start( schema.retention_policies.len() ) as u32;
-		for retention_policy in schema.retention_policies {
+		for retention_policy in &schema.retention_policies {
 			try!( opened_file.write_u32::<BigEndian>( archive_offset as u32 ) );
 			try!( opened_file.write_u32::<BigEndian>( retention_policy.precision ) );
 			try!( opened_file.write_u32::<BigEndian>( retention_policy.points()  ) );
@@ -65,6 +65,8 @@ impl WhisperFile {
 		Ok( WhisperFile::open_mmap(path, mmap) )
 	}
 
+	// TODO: open should validate contents of whisper file
+	// and return Result<WhisperFile, io::Error>
 	pub fn open(path: &Path) -> WhisperFile {
 		let mmap = Mmap::open_path(path, Protection::ReadWrite).unwrap();
 		WhisperFile::open_mmap(path, mmap)
@@ -88,8 +90,8 @@ impl WhisperFile {
 		whisper_file
 	}
 
-	pub fn write(&mut self, point: Point) {
-		self.archives[0].write(point);
+	pub fn write(&mut self, point: &Point) {
+		self.archives[0].write(&point);
 	}
 }
 
@@ -157,9 +159,9 @@ mod tests {
 	#[test]
 	fn test_new() {
 		let path = Path::new("/tmp/blah.wsp").to_path_buf();
-        let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
-        let schema = Schema::new_from_retention_specs(default_specs);
+		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
+		let schema = Schema::new_from_retention_specs(default_specs);
 
-        let file = WhisperFile::new(&path, schema).unwrap();
+        let file = WhisperFile::new(&path, &schema).unwrap();
 	}
 }

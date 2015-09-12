@@ -53,9 +53,9 @@ impl RetentionPolicy {
         let mut writer = BufWriter::new(buf);
         let points = self.retention / self.precision;
 
-        writer.write_u32::<BigEndian>(offset as u32).unwrap();
-        writer.write_u32::<BigEndian>(self.precision as u32).unwrap();
-        writer.write_u32::<BigEndian>(points as u32).unwrap();
+        writer.write_u32::<BigEndian>( offset as u32 ).unwrap();
+        writer.write_u32::<BigEndian>( self.precision as u32 ).unwrap();
+        writer.write_u32::<BigEndian>( points as u32 ).unwrap();
     }
 }
 

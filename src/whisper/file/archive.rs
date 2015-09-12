@@ -4,7 +4,8 @@ use std::cmp;
 use memmap::MmapView;
 use byteorder::{ByteOrder, BigEndian };
 
-use super::super::point::{ self, Point }; // , POINT_SIZE
+use whisper::Point;
+use super::super::point::{ self };
 
 // offset + seconds_per_point + points
 pub const ARCHIVE_INFO_SIZE : usize = 12;
@@ -41,7 +42,7 @@ impl Archive {
 		
 	}
 
-	pub fn write(&mut self, point: Point ) {
+	pub fn write(&mut self, point: &Point ) {
 		let bucket_name = self.bucket_name(point.0);
 
 		let archive_index = self.archive_index(&bucket_name);
@@ -58,6 +59,8 @@ impl Archive {
 		let mut data_needed = points.len()*point::POINT_SIZE as usize;
 
 		let end_of_read = (start.0 as usize)*point::POINT_SIZE + data_needed;
+
+		// Must be cognizant of wrap around reads
 		if end_of_read > self.size() {
 			let overflow_bytes = end_of_read-self.size();
 
@@ -256,7 +259,7 @@ mod tests {
 
 			let point = Point(1440392090,8.0);
 			let bucket_name = BucketName(point.0);
-			archive.write(point);
+			archive.write(&point);
 			assert_eq!(archive.archive_index(&bucket_name).0, 1);
 
 			unsafe{ points_buf.set_len(1) };
