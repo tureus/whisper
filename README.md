@@ -40,14 +40,14 @@ This is actually version 2 of Xavier's reimplementation. The aim is create a sma
 
 How is it faster?
 
- - Staticly compiled machine code with few dynamic allocations and no garbage collection
+ - Staticly compiled to machine code with few dynamic allocations, no garbage collection, and no runtime
  - Uses POSIX facilities for `mmap`, commonly read pages of files are kept hot in RAM
  - Files are kept open for longer with the read-through `WhisperCache`
 
 How is the code better?
 
  - Functionality is broken out to smaller, unit tested rust modules
- - Core file concepts are encoded in types to avoid programmer error and keep things explicit
+ - Whisper concepts are encoded in types to avoid programmer error and keep things explicit
 
 How do I use it?
 ----
