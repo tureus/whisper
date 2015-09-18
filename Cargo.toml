@@ -1,6 +1,6 @@
 [package]
 name = "whisper"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Xavier Lange <xrlange@gmail.com>"]
 description = "Whisper time series file support"
 license = "MIT"
@@ -10,7 +10,7 @@ repository = "https://github.com/tureus/whisper.git"
 [dependencies.memmap]
 
 [[bin]]
-name="mapit"
+name="whisper"
 
 [dependencies]
 byteorder = "*"

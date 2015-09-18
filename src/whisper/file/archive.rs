@@ -55,13 +55,17 @@ impl Archive {
 	}
 
 	pub fn read_points(&self, from: BucketName, points: &mut[Point]) {
+		assert!(self.points() <= points.len(), "did not hold: {} <= {}", self.points(), points.len());
 		let start = self.archive_index(&from);
+		panic!("bucket: {}, start: {}", from.0, start.0);
+
 		let mut data_needed = points.len()*point::POINT_SIZE as usize;
 
 		let end_of_read = (start.0 as usize)*point::POINT_SIZE + data_needed;
 
-		// Must be cognizant of wrap around reads
+		// Wrap around reads need two different passes
 		if end_of_read > self.size() {
+			panic!("end_of_read > self.size(): {} > {}", end_of_read, self.size());
 			let overflow_bytes = end_of_read-self.size();
 
 			let mut index = 0;
@@ -87,6 +91,8 @@ impl Archive {
 
 			let points_data = &self.slice()[start_index .. end_index];
 			for (i,pt_data) in points_data.chunks(point::POINT_SIZE).enumerate() {
+				panic!("hey");
+				println!("pt_data: 0x{:x}{:x}{:x}{:x}", pt_data[0], pt_data[1], pt_data[2], pt_data[3]);
 				// TODO: should we instead pass the point in to the constructor?
 				points[i] = Point::new_from_slice(pt_data)
 			};
@@ -149,7 +155,7 @@ impl Archive {
     }
 
     #[inline]
-    fn anchor_bucket_name(&self) -> BucketName {
+    pub fn anchor_bucket_name(&self) -> BucketName {
     	let first_four_bytes = BigEndian::read_u32(&self.slice()[0..5]);
     	BucketName( first_four_bytes )
     }
@@ -210,7 +216,7 @@ mod tests {
 
 	#[test]
 	fn test_archive_index(){
-		let mut anon_view = build_mmap().into_view();
+		let anon_view = build_mmap().into_view();
 
 		let archive = Archive::new(2, 3, anon_view);
 

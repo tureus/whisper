@@ -1,11 +1,12 @@
 use memmap::{ Mmap, Protection };
-use byteorder::{ ByteOrder, BigEndian, ReadBytesExt, WriteBytesExt };
+use byteorder::{ ByteOrder, BigEndian, WriteBytesExt };
 
 mod header;
 pub mod archive;
 
 use self::header::{ Header, AggregationType };
 use self::archive::{ Archive, ARCHIVE_INFO_SIZE };
+use super::schema::METADATA_DISK_SIZE;
 
 use whisper::Point;
 use whisper::Schema;
@@ -17,17 +18,62 @@ use self::libc::funcs::posix01::unistd::ftruncate;
 use std::os::unix::prelude::AsRawFd;
 use std::io::{ self, Error};
 use std::path::{ Path, PathBuf };
+use std::fmt;
 
-#[derive(Debug)]
 pub struct WhisperFile {
 	pub path: PathBuf,
 	pub header: Header,
 	pub archives: Vec< Archive >,
 }
 
+impl fmt::Debug for WhisperFile {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		try!(write!(f, "Meta data:
+  aggregation method: {}
+  max retention: {}
+  xFilesFactor: {}
+
+", self.header.aggregation_type, self.header.max_retention, self.header.x_files_factor));
+
+		let mut index = 0;
+		let mut offset = Header::archives_start(self.archives.len());
+
+		let max_points = self.archives.iter().map(|x| x.points()).max().unwrap();
+		let mut points_buf = Vec::with_capacity(max_points);
+
+		for archive in &self.archives {
+			try!(write!(f, "Archive {} info:
+  offset: {}
+  seconds per point: {}
+  points: {}
+  retention: {}
+  size: {}
+
+Archive {} data:
+", index, offset, archive.seconds_per_point(), archive.points(), archive.seconds_per_point() * archive.points() as u32, archive.size(), index ));
+
+			unsafe{ points_buf.set_len(archive.points()) };
+			archive.read_points(archive.anchor_bucket_name(), &mut points_buf[..]);
+
+			let mut points_index = 0;
+			for point in &points_buf {
+				try!(write!(f, "{}:	{},          {}\n", points_index, point.0, point.1));
+
+				points_index = points_index + 1;
+			}
+
+			offset = offset + archive.size();
+			index = index + 1;
+		}
+
+		write!(f,"")
+	}
+}
+
+
 impl WhisperFile {
 	pub fn new(path: &Path, schema: &Schema) -> io::Result<WhisperFile> {
-        let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path));
+		let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path));
 
 		// Allocate space on disk (could be costly!)
 		{
@@ -97,7 +143,7 @@ impl WhisperFile {
 
 #[cfg(test)]
 mod tests {
-	use whisper::{ Schema, WhisperFile };
+	use whisper::{ Schema, WhisperFile, Point };
 	use super::header;
 
 	use std::path::{ Path, PathBuf};
@@ -157,11 +203,23 @@ mod tests {
 	}
 
 	#[test]
-	fn test_new() {
+	fn test_write() {
 		let path = Path::new("/tmp/blah.wsp").to_path_buf();
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
 		let schema = Schema::new_from_retention_specs(default_specs);
 
-        let file = WhisperFile::new(&path, &schema).unwrap();
+		let mut file = WhisperFile::new(&path, &schema).unwrap();
+
+		file.write(&Point(10, 0.0))
+	}
+
+	#[test]
+	fn test_write_aggregation() {
+
+	}
+
+	#[test]
+	fn test_write_outside_retention(){
+
 	}
 }

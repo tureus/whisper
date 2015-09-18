@@ -5,7 +5,7 @@ use std::process::exit;
 use whisper::file::archive::ARCHIVE_INFO_SIZE;
 pub use self::retention_policy::RetentionPolicy;
 
-const METADATA_DISK_SIZE : u32 = 10;
+pub const METADATA_DISK_SIZE : u32 = 10;
 
 #[derive(Debug)]
 pub struct Schema {

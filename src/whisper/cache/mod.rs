@@ -87,7 +87,6 @@ mod test {
 
 	#[bench]
 	fn test_opening_new_whisper_file(b: &mut Bencher){
-		// debug!("`{:?}` file does not exist on disk. creating default.", path_on_disk);
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
 		let schema = Schema::new_from_retention_specs(default_specs);
 
@@ -98,10 +97,5 @@ mod test {
 			let metric = NamedPoint::new("hey.there.bear".to_string(), 1434598525, 0.0);
 			cache.write(metric).unwrap();
 		});
-	}
-
-	#[bench]
-	fn test_writing_to_whisper_file(b: &mut Bencher) {
-		
 	}
 }
