@@ -16,6 +16,8 @@ Open tasks
  - [ ] test suite comparing behavior with python implementation
  - [ ] WhisperFile advisory locking
  - [ ] WhisperFile#write to io::Result (file deleted while app is running removes from cache, etc)
+ - [ ] Put most #[derive(Debug)] behind feature flag for test mode only?
+
 
 What is Whisper?
 ----
