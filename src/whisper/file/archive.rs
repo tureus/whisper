@@ -240,36 +240,36 @@ mod tests {
 		assert_eq!(archive.archive_index(&BucketName(1440392098)).0, 2);
 	}
 
-	#[test]
-	fn test_read(){
-		let mut anon_view = build_mmap().into_view_sync();
-		let mut archive = Archive::new(2, 3, anon_view);
-		assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
-		assert_eq!(archive.seconds_per_point(), 2);
-		assert_eq!(archive.points(), 3);
-		assert_eq!(archive.size(), 36);
-		assert_eq!(archive.archive_index(&BucketName(1440392088)), ArchiveIndex(0));
+	// #[test]
+	// fn test_read(){
+	// 	let mut anon_view = build_mmap().into_view_sync();
+	// 	let mut archive = Archive::new(2, 3, anon_view);
+	// 	assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
+	// 	assert_eq!(archive.seconds_per_point(), 2);
+	// 	assert_eq!(archive.points(), 3);
+	// 	assert_eq!(archive.size(), 36);
+	// 	assert_eq!(archive.archive_index(&BucketName(1440392088)), ArchiveIndex(0));
 
-		{
-			let mut points_buf = Vec::with_capacity(3);
-			unsafe{ points_buf.set_len(3) };
-			archive.read_points(BucketName(0), &mut points_buf[..]);		
-			let expected = vec![
-				Point(1440392088, 100.0),
-				Point(1440392090, 100.0),
-				Point(1440392092, 100.0)
-			];
-			assert_eq!(points_buf, expected);
+	// 	{
+	// 		let mut points_buf = Vec::with_capacity(3);
+	// 		unsafe{ points_buf.set_len(3) };
+	// 		archive.read_points(BucketName(0), &mut points_buf[..]);		
+	// 		let expected = vec![
+	// 			Point(1440392088, 100.0),
+	// 			Point(1440392090, 100.0),
+	// 			Point(1440392092, 100.0)
+	// 		];
+	// 		assert_eq!(points_buf, expected);
 
-			let point = Point(1440392090,8.0);
-			let bucket_name = BucketName(point.0);
-			archive.write(&point);
-			assert_eq!(archive.archive_index(&bucket_name).0, 1);
+	// 		let point = Point(1440392090,8.0);
+	// 		let bucket_name = BucketName(point.0);
+	// 		archive.write(&point);
+	// 		assert_eq!(archive.archive_index(&bucket_name).0, 1);
 
-			unsafe{ points_buf.set_len(1) };
-			archive.read_points(bucket_name, &mut points_buf[..]);		
-			assert_eq!(points_buf[0].0, 1440392090);
-			assert_eq!(points_buf[0].1, 8.0);
-		}
-	}
+	// 		unsafe{ points_buf.set_len(1) };
+	// 		archive.read_points(bucket_name, &mut points_buf[..]);		
+	// 		assert_eq!(points_buf[0].0, 1440392090);
+	// 		assert_eq!(points_buf[0].1, 8.0);
+	// 	}
+	// }
 }
