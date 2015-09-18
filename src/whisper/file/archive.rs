@@ -1,7 +1,7 @@
 use std::fmt;
 use std::cmp;
 
-use memmap::MmapView;
+use memmap::MmapViewSync;
 use byteorder::{ByteOrder, BigEndian };
 
 use whisper::Point;
@@ -22,7 +22,7 @@ pub struct Archive {
 	seconds_per_point: u32,
 	points: usize,
 
-	mmap_view: MmapView
+	mmap_view: MmapViewSync
 }
 
 impl fmt::Debug for Archive {
@@ -32,7 +32,7 @@ impl fmt::Debug for Archive {
 }
 
 impl Archive {
-	pub fn new(seconds_per_point: u32, points: usize, mmap_view: MmapView) -> Archive {
+	pub fn new(seconds_per_point: u32, points: usize, mmap_view: MmapViewSync) -> Archive {
 
 		Archive {
 			seconds_per_point: seconds_per_point,
@@ -216,7 +216,7 @@ mod tests {
 
 	#[test]
 	fn test_archive_index(){
-		let anon_view = build_mmap().into_view();
+		let anon_view = build_mmap().into_view_sync();
 
 		let archive = Archive::new(2, 3, anon_view);
 
@@ -242,9 +242,7 @@ mod tests {
 
 	#[test]
 	fn test_read(){
-		let mut anon_mmap = build_mmap();
-
-		let anon_view = anon_mmap.into_view();
+		let mut anon_view = build_mmap().into_view_sync();
 		let mut archive = Archive::new(2, 3, anon_view);
 		assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
 		assert_eq!(archive.seconds_per_point(), 2);

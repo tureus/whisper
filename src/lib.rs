@@ -8,4 +8,4 @@ extern crate test;
 
 mod whisper;
 
-pub use self::whisper::{ WhisperFile, Point, Schema };
+pub use self::whisper::{ WhisperFile, Point, Schema, WhisperCache, NamedPoint };

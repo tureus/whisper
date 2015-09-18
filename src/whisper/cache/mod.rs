@@ -5,13 +5,16 @@ use std::collections::HashMap;
 use std::path::{ Path, PathBuf };
 use std::fs::{ PathExt, DirBuilder };
 use std::io;
+use std::sync::{ Arc, Mutex };
 
 mod named_point;
 pub use self::named_point::NamedPoint;
 
+type WhisperMutex = Arc<Mutex<WhisperFile>>;
+
 pub struct WhisperCache {
 	pub base_path: PathBuf,
-	open_files: HashMap< PathBuf, WhisperFile >,
+	open_files: HashMap< PathBuf, WhisperMutex >,
 	schema: Schema
 }
 
@@ -27,14 +30,15 @@ impl WhisperCache {
 	pub fn write(&mut self, named_point: NamedPoint) -> Result<(), io::Error> {
 		let metric_rel_path = named_point.rel_path();
 
-		let mut whisper_file = try!( self.open(metric_rel_path) );
+		let cache_entry = try!( self.get(metric_rel_path) );
+		let mut whisper_file = cache_entry.lock().unwrap();
 
 		// We assume opened files always succeed in writes
 		whisper_file.write(&named_point.point());
 		Ok(())
 	}
 
-	fn open(&mut self, metric_rel_path: PathBuf) -> Result< &mut WhisperFile, io::Error> {
+	fn get(&mut self, metric_rel_path: PathBuf) -> Result< &WhisperMutex, io::Error> {
 
 		if self.open_files.contains_key(&metric_rel_path) {
 
@@ -68,7 +72,7 @@ impl WhisperCache {
 
 			};
 
-			self.open_files.insert(path_for_insert, whisper_file );
+			self.open_files.insert(path_for_insert, Arc::new( Mutex::new(whisper_file) ) );
 			Ok( self.open_files.get_mut(&path_for_relookup).unwrap() )
 
 		}

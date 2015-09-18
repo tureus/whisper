@@ -1,6 +1,6 @@
 use std::fmt;
 
-use memmap::MmapView;
+use memmap::MmapViewSync;
 use byteorder::{ ByteOrder, BigEndian, ReadBytesExt };
 
 use super::archive::{ self, Archive };
@@ -94,8 +94,8 @@ impl Header {
 		self.x_files_factor
 	}
 
-	// Consumes MmapView to create Archives with smaller MmapView
-	pub fn mmap_to_archives(&self, mmap_data: MmapView) -> Vec<Archive> {
+	// Consumes MmapViewSync to create Archives with smaller MmapViewSync
+	pub fn mmap_to_archives(&self, mmap_data: MmapViewSync) -> Vec<Archive> {
 		let (archive_infos, archive_count) = {
 			let raw_data = &unsafe{ mmap_data.as_slice() }; // localize not safe stuff
 			let count = Header::archive_count(raw_data);
@@ -143,7 +143,7 @@ impl Header {
 		};
 
 		for archive_info_slice in chunks {
-			// we don't use offset because of how the MmapView is consumed in to smaller MmapViews
+			// we don't use offset because of how the MmapViewSync is consumed in to smaller MmapViewSyncs
 			// let _offset = BigEndian::read_u32(&archive_info_slice[0..4]);
 			let seconds_per_point = BigEndian::read_u32(&archive_info_slice[4..9]);
 			let points = BigEndian::read_u32(&archive_info_slice[8..]) as usize;

@@ -106,7 +106,7 @@ impl WhisperFile {
 			archive_offset = archive_offset + retention_policy.size_on_disk();
 		}
 
-		let mmap = Mmap::open(opened_file, Protection::ReadWrite ).unwrap();
+		let mmap = Mmap::open(&opened_file, Protection::ReadWrite ).unwrap();
 
 		Ok( WhisperFile::open_mmap(path, mmap) )
 	}
@@ -120,7 +120,7 @@ impl WhisperFile {
 
 	fn open_mmap<P>(path: P, mmap: Mmap) -> WhisperFile
 	where P: AsRef<Path> {
-		let mmap_view = mmap.into_view();
+		let mmap_view = mmap.into_view_sync();
 
 		let header = {
 			let slice = unsafe{ mmap_view.as_slice() };
@@ -194,7 +194,7 @@ mod tests {
 		assert_eq!(hdr.max_retention(), 300);
 		assert_eq!(hdr.x_files_factor(), 0.5);
 
-		let mmap_view = anon_mmap.into_view();
+		let mmap_view = anon_mmap.into_view_sync();
 		let archives = hdr.mmap_to_archives(mmap_view);
 		assert_eq!(archives.len(), 1);
 		assert_eq!(archives[0].seconds_per_point(), 60);
