@@ -79,20 +79,20 @@ impl Header {
 		STATIC_HEADER_SIZE + archive::ARCHIVE_INFO_SIZE*archive_count
 	}
 
-	// #[inline]
-	// pub fn aggregation_type(&self) -> AggregationType {
-	// 	self.aggregation_type.clone()
-	// }
+	#[inline]
+	pub fn aggregation_type(&self) -> AggregationType {
+		self.aggregation_type.clone()
+	}
 
-	// #[inline]
-	// pub fn max_retention(&self) -> u32 {
-	// 	self.max_retention
-	// }
+	#[inline]
+	pub fn max_retention(&self) -> u32 {
+		self.max_retention
+	}
 
-	// #[inline]
-	// pub fn x_files_factor(&self) -> f32 {
-	// 	self.x_files_factor
-	// }
+	#[inline]
+	pub fn x_files_factor(&self) -> f32 {
+		self.x_files_factor
+	}
 
 	// Consumes MmapView to create Archives with smaller MmapView
 	pub fn mmap_to_archives(&self, mmap_data: MmapView) -> Vec<Archive> {

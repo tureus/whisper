@@ -69,7 +69,6 @@ fn validate_retention_policies(expanded_pairs: &Vec<(&String, &Option<RetentionP
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{METADATA_DISK_SIZE};
     use whisper::file::archive::ARCHIVE_INFO_SIZE;
     
     #[test]
