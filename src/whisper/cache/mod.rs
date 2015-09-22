@@ -6,6 +6,7 @@ use std::path::{ Path, PathBuf };
 use std::fs::{ PathExt, DirBuilder };
 use std::io;
 use std::sync::{ Arc, Mutex };
+use lru_cache::LruCache;
 
 mod named_point;
 pub use self::named_point::NamedPoint;
@@ -14,7 +15,8 @@ type WhisperMutex = Arc<Mutex<WhisperFile>>;
 
 pub struct WhisperCache {
 	pub base_path: PathBuf,
-	open_files: HashMap< PathBuf, WhisperMutex >,
+	// open_files: HashMap< PathBuf, WhisperMutex >,
+	open_files: LruCache< PathBuf, WhisperMutex >,
 	schema: Schema
 }
 
@@ -22,7 +24,7 @@ impl WhisperCache {
 	pub fn new(base_path: &Path, schema: Schema) -> WhisperCache {
 		WhisperCache {
 			base_path: base_path.to_path_buf(),
-			open_files: HashMap::new(),
+			open_files: LruCache::new(30000),
 			schema: schema
 		}
 	}
