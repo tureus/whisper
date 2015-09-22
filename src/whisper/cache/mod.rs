@@ -21,10 +21,10 @@ pub struct WhisperCache {
 }
 
 impl WhisperCache {
-	pub fn new(base_path: &Path, schema: Schema) -> WhisperCache {
+	pub fn new(base_path: &Path, size: usize, schema: Schema) -> WhisperCache {
 		WhisperCache {
 			base_path: base_path.to_path_buf(),
-			open_files: LruCache::new(30000),
+			open_files: LruCache::new(size),
 			schema: schema
 		}
 	}
@@ -97,7 +97,7 @@ mod test {
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
 		let schema = Schema::new_from_retention_specs(default_specs);
 
-		let mut cache = WhisperCache::new(&Path::new("/tmp"), schema);
+		let mut cache = WhisperCache::new(&Path::new("/tmp"), 100, schema);
 		let current_time = 1434598525;
 
 		b.iter(move ||{
