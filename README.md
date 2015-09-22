@@ -17,7 +17,7 @@ Open tasks
  - [ ] WhisperFile advisory locking
  - [ ] WhisperFile#write to io::Result (file deleted while app is running removes from cache, etc)
  - [ ] Put most #[derive(Debug)] behind feature flag for test mode only?
-
+ - [ ] What should we do when we get a 'nan' value in a datagram? Right now it goes to 0.0.
 
 What is Whisper?
 ----
