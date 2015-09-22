@@ -17,32 +17,25 @@ impl NamedPoint {
 		}
 	}
 
-    pub fn from_datagram(datagram_buffer: &[u8]) -> Result<NamedPoint, String > {
+    pub fn from_datagram(datagram_buffer: &[u8]) -> Result< Vec<NamedPoint>, String > {
         let datagram = match str::from_utf8(datagram_buffer) {
             Ok(body) => body,
             Err(_) => return Err( "invalid utf8 character".to_string() )
         };
 
-        // TODO: this seems too complicated just to detect/remove "\n"
-        // And it scans the string as utf8 codepoints.
-        // Will this just be ASCII... is it safe to skip utf8-ness? (probs not)
-        let (without_newline,newline_str) = {
-        	datagram.split_at(datagram.len()-1)
-
-        	// old code (terribad?)
-            // let len = datagram.len();
-            // ( 
-            //   datagram.slice_chars(0, len-1),
-            //   datagram.slice_chars(len-1, len)
-            // )
-        };
-        if newline_str != "\n" {
-            return Err( format!("Datagram `{}` is missing a newline `{}`", datagram, newline_str) )
+        let parsed_lines : Vec<Result<NamedPoint,String>> = datagram.lines_any().map(|x| NamedPoint::parse_datagram_line(x) ).collect();
+        if parsed_lines.iter().any(|x| x.is_err() ) {
+        	Err("datagram had invalid entries. skipping all.".to_string())
+        } else {
+        	Ok(parsed_lines.into_iter().map(|x| x.unwrap()).collect())
         }
 
-        let parts : Vec<&str> = without_newline.split(" ").collect();
+    }
+
+    fn parse_datagram_line(line: &str) -> Result< NamedPoint, String > {
+        let parts : Vec<&str> = line.split(" ").collect();
         if parts.len() != 3 {
-            return Err( format!("Datagram `{}` does not have 3 parts", datagram) );
+            return Err( format!("Datagram `{}` does not have 3 parts", line) );
         }
 
         // TODO: copies to msg. Used to be a reference from datagram_buffer
@@ -55,7 +48,8 @@ impl NamedPoint {
             match value_parse {
                 Ok(val) => val,
                 Err(_) => {
-                    return Err( format!("Datagram value `{}` is not a float", parts[1]) )
+                		0.0
+                    // return Err( format!("Datagram value `{}` is not a float", parts[1]) )
                 }
             }
         };
@@ -72,7 +66,6 @@ impl NamedPoint {
 
         let msg = NamedPoint::new(metric_name, timestamp, value);
         Ok(msg)
-
     }
 
 	pub fn rel_path(&self) -> PathBuf {
@@ -98,19 +91,19 @@ mod tests {
     use std::path::Path;
 
     #[bench]
-    fn bench_good_datagram(b: &mut Bencher){
-        let datagram = "home.pets.bears.lua.purr_volume 100.00 1434598525\n";
+    fn bench_good_datagram_line(b: &mut Bencher){
+        let datagram = "home.pets.bears.lua.purr_volume 100.00 1434598525";
 
         b.iter(|| {
-            let msg_opt = NamedPoint::from_datagram(datagram.as_bytes());
+            let msg_opt = NamedPoint::parse_datagram_line(datagram);
             msg_opt.unwrap();
         });
     }
 
     #[test]
-    fn test_good_datagram() {
-        let datagram = "home.pets.bears.lua.purr_volume 100.00 1434598525\n";
-        let msg_opt = NamedPoint::from_datagram(datagram.as_bytes());
+    fn test_good_datagram_line() {
+        let datagram = "home.pets.bears.lua.purr_volume 100.00 1434598525";
+        let msg_opt = NamedPoint::parse_datagram_line(datagram);
         let msg = msg_opt.unwrap();
 
         let expected = NamedPoint {
@@ -121,9 +114,28 @@ mod tests {
         assert_eq!(msg, expected);
     }
 
+    #[test]
+    fn test_long_datagram() {
+    	let datagram = "collectd.xle.xle-forwarder-01.disk-vda.disk_octets.read nan 1442949342\r\ncollectd.xle.xle-forwarder-01.disk-vda.disk_octets.write nan 1442949342\r\n";
+    	let msgs_opt = NamedPoint::from_datagram(datagram.as_bytes());
+    	assert!(msgs_opt.is_ok());
+
+    	let expected = vec![
+    		NamedPoint {
+    			metric_name: "collectd.xle.xle-forwarder-01.disk-vda.disk_octets.read".to_string(),
+    			point: Point(1442949342, 0.0)
+    		},
+    		NamedPoint {
+    			metric_name: "collectd.xle.xle-forwarder-01.disk-vda.disk_octets.write".to_string(),
+    			point: Point(1442949342, 0.0)
+    		}
+    	];
+    	assert_eq!(msgs_opt.unwrap(), expected);
+    }
+
     #[bench]
     fn bench_bad_datagram(b: &mut Bencher){
-        let datagram = "home.pets.monkeys.squeeky.squeeks asdf 1434598525\n";
+        let datagram = "home.pets.monkeys.squeeky.squeeks nan";
 
         b.iter(|| {
             let msg_opt = NamedPoint::from_datagram(datagram.as_bytes());
