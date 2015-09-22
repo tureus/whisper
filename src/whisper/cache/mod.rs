@@ -42,7 +42,7 @@ impl WhisperCache {
 
 		if self.open_files.contains_key(&metric_rel_path) {
 
-			// debug!("file cache hit. resolved {:?}", metric_rel_path);
+			debug!("file cache hit. resolved {:?}", metric_rel_path);
 			Ok( self.open_files.get_mut(&metric_rel_path).unwrap() )
 
 		} else {
@@ -56,7 +56,7 @@ impl WhisperCache {
 
 			let whisper_file = if path_on_disk.exists() && path_on_disk.is_file() {
 
-				// debug!("`{:?}` exists on disk. opening.", path_on_disk);
+				debug!("`{:?}` exists on disk. opening.", path_on_disk);
 				WhisperFile::open(&path_on_disk)
 
 			} else {
@@ -65,9 +65,10 @@ impl WhisperCache {
 				// TODO: benchmark (for my own curiosity)
 				// TODO: assumption here is that we do not store in root FS
 				if !path_on_disk.parent().unwrap().is_dir() {
-					// debug!("`{:?}` must be created first", path_on_disk.parent());
+					debug!("parent dir for `{:?}` must be created first", path_on_disk.parent());
 					try!( DirBuilder::new().recursive(true).create( path_on_disk.parent().unwrap() ) );
 				}
+				debug!("`{:?}` must now be created", path_on_disk);
 				try!( WhisperFile::new(&path_on_disk, &self.schema) )
 
 			};
