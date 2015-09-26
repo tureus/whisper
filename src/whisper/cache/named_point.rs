@@ -23,7 +23,7 @@ impl NamedPoint {
             Err(_) => return Err( "invalid utf8 character".to_string() )
         };
 
-        let parsed_lines : Vec<Result<NamedPoint,String>> = datagram.lines_any().map(|x| NamedPoint::parse_datagram_line(x) ).collect();
+        let parsed_lines : Vec<Result<NamedPoint,String>> = datagram.lines_any().map(|x| NamedPoint::parse_line(x) ).collect();
         if parsed_lines.iter().any(|x| x.is_err() ) {
         	Err("datagram had invalid entries. skipping all.".to_string())
         } else {
@@ -32,7 +32,7 @@ impl NamedPoint {
 
     }
 
-    fn parse_datagram_line(line: &str) -> Result< NamedPoint, String > {
+    pub fn parse_line(line: &str) -> Result< NamedPoint, String > {
         let parts : Vec<&str> = line.split(" ").collect();
         if parts.len() != 3 {
             return Err( format!("Datagram `{}` does not have 3 parts", line) );
@@ -95,7 +95,7 @@ mod tests {
         let datagram = "home.pets.bears.lua.purr_volume 100.00 1434598525";
 
         b.iter(|| {
-            let msg_opt = NamedPoint::parse_datagram_line(datagram);
+            let msg_opt = NamedPoint::parse_line(datagram);
             msg_opt.unwrap();
         });
     }
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_good_datagram_line() {
         let datagram = "home.pets.bears.lua.purr_volume 100.00 1434598525";
-        let msg_opt = NamedPoint::parse_datagram_line(datagram);
+        let msg_opt = NamedPoint::parse_line(datagram);
         let msg = msg_opt.unwrap();
 
         let expected = NamedPoint {

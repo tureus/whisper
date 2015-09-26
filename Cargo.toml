@@ -1,6 +1,6 @@
 [package]
 name = "whisper"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Xavier Lange <xrlange@gmail.com>"]
 description = "Whisper time series file support"
 license = "MIT"
