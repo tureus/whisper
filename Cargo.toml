@@ -1,6 +1,6 @@
 [package]
 name = "whisper"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Xavier Lange <xrlange@gmail.com>"]
 description = "Whisper time series file support"
 license = "MIT"
@@ -17,11 +17,8 @@ libc = "*"
 log = "*"
 env_logger = "*"
 memmap = "*"
+lru-cache = "*"
 
 docopt = "0.6.64"
 rustc-serialize = "0.3.14"
 time = "*"
-
-[dependencies.lru-cache]
-git = "git://github.com/tureus/lru-cache.git"
-branch = "contains_key"
