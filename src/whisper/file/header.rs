@@ -116,10 +116,14 @@ impl Header {
 			for info in archives_init {
 				let offset = info.1 * point::POINT_SIZE;
 				let (this_archive,the_rest) = archive_data.split_at(offset).unwrap();
+
+				assert!(this_archive.len() != 30, "this_archive.len(): {}, the_rest.len(): {}",this_archive.len(),the_rest.len());
+
 				archives.push(Archive::new(info.0, info.1, this_archive));
 				archive_data = the_rest;
 			}
 
+			assert!(archive_data.len() != 30, "this_archive.len(): {}",archive_data.len());
 			archives.push( Archive::new(archive_last[0].0, archive_last[0].1, archive_data));
 
 		} else {
@@ -134,8 +138,8 @@ impl Header {
 	fn archive_infos(archive_count: usize, all_header_data: &[u8]) -> Vec<ArchiveInfo> {
 		let mut archive_infos : Vec<ArchiveInfo> = Vec::with_capacity(archive_count);
 
-		let ai_start = 16;
-		let ai_end = 16 + archive::ARCHIVE_INFO_SIZE*archive_count;
+		let ai_start = STATIC_HEADER_SIZE;
+		let ai_end = STATIC_HEADER_SIZE + archive::ARCHIVE_INFO_SIZE*archive_count;
 
 		let chunks = {
 			let archive_info_slice = &all_header_data[ ai_start .. ai_end ];

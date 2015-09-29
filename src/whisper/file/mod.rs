@@ -5,8 +5,10 @@ mod header;
 pub mod archive;
 
 use self::header::{ Header, AggregationType };
-use self::archive::{ Archive, ARCHIVE_INFO_SIZE };
-use super::schema::METADATA_DISK_SIZE;
+use self::archive::Archive;
+
+pub use self::header::STATIC_HEADER_SIZE;
+pub use self::archive::ARCHIVE_INFO_SIZE;
 
 use whisper::Point;
 use whisper::Schema;

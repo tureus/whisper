@@ -33,7 +33,6 @@ impl fmt::Debug for Archive {
 
 impl Archive {
 	pub fn new(seconds_per_point: u32, points: usize, mmap_view: MmapViewSync) -> Archive {
-
 		Archive {
 			seconds_per_point: seconds_per_point,
 			points: points,
@@ -55,9 +54,8 @@ impl Archive {
 	}
 
 	pub fn read_points(&self, from: BucketName, points: &mut[Point]) {
-		assert!(self.points() <= points.len(), "did not hold: {} <= {}", self.points(), points.len());
+		assert!(self.points() >= points.len(), "did not hold: {} >= {}", self.points(), points.len());
 		let start = self.archive_index(&from);
-		panic!("bucket: {}, start: {}", from.0, start.0);
 
 		let mut data_needed = points.len()*point::POINT_SIZE as usize;
 
@@ -65,7 +63,6 @@ impl Archive {
 
 		// Wrap around reads need two different passes
 		if end_of_read > self.size() {
-			panic!("end_of_read > self.size(): {} > {}", end_of_read, self.size());
 			let overflow_bytes = end_of_read-self.size();
 
 			let mut index = 0;
@@ -78,10 +75,12 @@ impl Archive {
 			let second_data = &self.slice()[second_start .. second_end];
 
 			for pt_data in first_data.chunks(point::POINT_SIZE) {
+				assert!(pt_data.len() >= 8, "pt_data.len(): {} < 8 (first_start: {}, first_end: {})", pt_data.len(), first_start, first_end);
 				points[index] = Point::new_from_slice(pt_data);
 				index = index + 1;
 			};
 			for pt_data in second_data.chunks(point::POINT_SIZE) {
+				assert!(pt_data.len() >= 8, "pt_data.len(): {} < 8", pt_data.len());
 				points[index] = Point::new_from_slice(pt_data);
 				index = index + 1;
 			};
@@ -91,7 +90,7 @@ impl Archive {
 
 			let points_data = &self.slice()[start_index .. end_index];
 			for (i,pt_data) in points_data.chunks(point::POINT_SIZE).enumerate() {
-				panic!("hey");
+				assert!(pt_data.len() >= 8, "pt_data.len(): {} < 8", pt_data.len());
 				println!("pt_data: 0x{:x}{:x}{:x}{:x}", pt_data[0], pt_data[1], pt_data[2], pt_data[3]);
 				// TODO: should we instead pass the point in to the constructor?
 				points[i] = Point::new_from_slice(pt_data)
@@ -201,6 +200,7 @@ mod tests {
 
 	#[cfg(test)]
 	fn build_mmap() -> Mmap{
+		// Borrows from the archive bytes
 		let archive_data = &SAMPLE_FILE_2[28..];
 		assert_eq!(archive_data[0], 0x55);
 
@@ -220,11 +220,12 @@ mod tests {
 
 		let archive = Archive::new(2, 3, anon_view);
 
-		// Our bucket names are aligned
+		// Our bucket names are aligned, ts normalization is working
 		assert_eq!(archive.bucket(1440392088).0, 1440392088);
 		assert_eq!(archive.bucket(1440392090).0, 1440392090);
 		assert_eq!(archive.bucket(1440392092).0, 1440392092);
 
+		// Assert absolute index in to archive
 		assert_eq!(archive.archive_index(&BucketName(1440392088)).0, 0);
 		assert_eq!(archive.archive_index(&BucketName(1440392090)).0, 1);
 		assert_eq!(archive.archive_index(&BucketName(1440392092)).0, 2);
@@ -240,36 +241,36 @@ mod tests {
 		assert_eq!(archive.archive_index(&BucketName(1440392098)).0, 2);
 	}
 
-	// #[test]
-	// fn test_read(){
-	// 	let mut anon_view = build_mmap().into_view_sync();
-	// 	let mut archive = Archive::new(2, 3, anon_view);
-	// 	assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
-	// 	assert_eq!(archive.seconds_per_point(), 2);
-	// 	assert_eq!(archive.points(), 3);
-	// 	assert_eq!(archive.size(), 36);
-	// 	assert_eq!(archive.archive_index(&BucketName(1440392088)), ArchiveIndex(0));
+	#[test]
+	fn test_read(){
+		let mut anon_view = build_mmap().into_view_sync();
+		let mut archive = Archive::new(2, 3, anon_view);
+		assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
+		assert_eq!(archive.seconds_per_point(), 2);
+		assert_eq!(archive.points(), 3);
+		assert_eq!(archive.size(), 36);
+		assert_eq!(archive.archive_index(&BucketName(1440392088)), ArchiveIndex(0));
 
-	// 	{
-	// 		let mut points_buf = Vec::with_capacity(3);
-	// 		unsafe{ points_buf.set_len(3) };
-	// 		archive.read_points(BucketName(0), &mut points_buf[..]);		
-	// 		let expected = vec![
-	// 			Point(1440392088, 100.0),
-	// 			Point(1440392090, 100.0),
-	// 			Point(1440392092, 100.0)
-	// 		];
-	// 		assert_eq!(points_buf, expected);
+		{
+			let mut points_buf = Vec::with_capacity(3);
+			unsafe{ points_buf.set_len(3) };
+			archive.read_points(BucketName(0), &mut points_buf[..]);		
+			let expected = vec![
+				Point(1440392088, 100.0),
+				Point(1440392090, 100.0),
+				Point(1440392092, 100.0)
+			];
+			assert_eq!(points_buf, expected);
 
-	// 		let point = Point(1440392090,8.0);
-	// 		let bucket_name = BucketName(point.0);
-	// 		archive.write(&point);
-	// 		assert_eq!(archive.archive_index(&bucket_name).0, 1);
+			let point = Point(1440392090,8.0);
+			let bucket_name = BucketName(point.0);
+			archive.write(&point);
+			assert_eq!(archive.archive_index(&bucket_name).0, 1);
 
-	// 		unsafe{ points_buf.set_len(1) };
-	// 		archive.read_points(bucket_name, &mut points_buf[..]);		
-	// 		assert_eq!(points_buf[0].0, 1440392090);
-	// 		assert_eq!(points_buf[0].1, 8.0);
-	// 	}
-	// }
+			unsafe{ points_buf.set_len(1) };
+			archive.read_points(bucket_name, &mut points_buf[..]);		
+			assert_eq!(points_buf[0].0, 1440392090);
+			assert_eq!(points_buf[0].1, 8.0);
+		}
+	}
 }

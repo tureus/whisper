@@ -2,10 +2,9 @@ mod retention_policy;
 
 use std::process::exit;
 
-use whisper::file::archive::ARCHIVE_INFO_SIZE;
+use whisper::file::STATIC_HEADER_SIZE;
+use whisper::file::ARCHIVE_INFO_SIZE;
 pub use self::retention_policy::RetentionPolicy;
-
-pub const METADATA_DISK_SIZE : u32 = 10;
 
 #[derive(Debug)]
 pub struct Schema {
@@ -34,7 +33,7 @@ impl Schema {
     }
 
     pub fn header_size_on_disk(&self) -> u32 {
-        METADATA_DISK_SIZE as u32 +
+        STATIC_HEADER_SIZE as u32 +
         (ARCHIVE_INFO_SIZE*self.retention_policies.len()) as u32
     }
 
@@ -69,7 +68,7 @@ fn validate_retention_policies(expanded_pairs: &Vec<(&String, &Option<RetentionP
 #[cfg(test)]
 mod tests {
     use super::*;
-    use whisper::file::archive::ARCHIVE_INFO_SIZE;
+    use whisper::file::{ STATIC_HEADER_SIZE, ARCHIVE_INFO_SIZE };
     
     #[test]
     fn test_size_on_disk(){
@@ -88,7 +87,7 @@ mod tests {
             retention_policies: vec![]
         };
 
-        let expected = METADATA_DISK_SIZE as u32
+        let expected = STATIC_HEADER_SIZE as u32
                 + ARCHIVE_INFO_SIZE as u32 * 2
                 + 60*12 // first policy size
                 + 1*12; // second policy size
