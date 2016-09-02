@@ -1,5 +1,5 @@
 use memmap::{ Mmap, Protection };
-use byteorder::{ ByteOrder, BigEndian, WriteBytesExt };
+use byteorder::{ BigEndian, WriteBytesExt };
 
 mod header;
 pub mod archive;
@@ -16,7 +16,7 @@ use whisper::Schema;
 // Modules needed to create file on disk
 use std::fs::OpenOptions;
 extern crate libc;
-use self::libc::funcs::posix01::unistd::ftruncate;
+use self::libc::ftruncate;
 use std::os::unix::prelude::AsRawFd;
 use std::io::{ self, Error};
 use std::path::{ Path, PathBuf };
@@ -148,7 +148,7 @@ mod tests {
 	use whisper::{ Schema, WhisperFile, Point };
 	use super::header;
 
-	use std::path::{ Path, PathBuf};
+	use std::path::Path;
 	use std::io::Cursor;
 	use std::io::Write;
 	use memmap::{ Mmap, Protection };

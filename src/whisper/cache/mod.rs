@@ -1,9 +1,8 @@
 // use carbon::CarbonMsg;
 // use whisper::{ WhisperFile, MutexWhisperFile };
 use whisper::{ WhisperFile, Schema };
-use std::collections::HashMap;
 use std::path::{ Path, PathBuf };
-use std::fs::{ PathExt, DirBuilder };
+use std::fs::DirBuilder;
 use std::io;
 use std::sync::{ Arc, Mutex };
 use lru_cache::LruCache;
@@ -88,9 +87,9 @@ mod test {
 	extern crate test;
 	use test::Bencher;
 
-	use std::path::{ Path };
+	use std::path::Path;
 
-	use whisper::{ WhisperCache, NamedPoint, Schema, Point };
+	use whisper::{ WhisperCache, NamedPoint, Schema };
 
 	#[bench]
 	fn test_opening_new_whisper_file(b: &mut Bencher){

@@ -1,5 +1,4 @@
 use std::fmt;
-use std::cmp;
 
 use memmap::MmapViewSync;
 use byteorder::{ByteOrder, BigEndian };
@@ -38,7 +37,6 @@ impl Archive {
 			points: points,
 			mmap_view: mmap_view
 		}
-		
 	}
 
 	pub fn write(&mut self, point: &Point ) {
@@ -57,7 +55,7 @@ impl Archive {
 		assert!(self.points() >= points.len(), "did not hold: {} >= {}", self.points(), points.len());
 		let start = self.archive_index(&from);
 
-		let mut data_needed = points.len()*point::POINT_SIZE as usize;
+		let data_needed = points.len()*point::POINT_SIZE as usize;
 
 		let end_of_read = (start.0 as usize)*point::POINT_SIZE + data_needed;
 
@@ -243,7 +241,7 @@ mod tests {
 
 	#[test]
 	fn test_read(){
-		let mut anon_view = build_mmap().into_view_sync();
+		let anon_view = build_mmap().into_view_sync();
 		let mut archive = Archive::new(2, 3, anon_view);
 		assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
 		assert_eq!(archive.seconds_per_point(), 2);
@@ -254,7 +252,7 @@ mod tests {
 		{
 			let mut points_buf = Vec::with_capacity(3);
 			unsafe{ points_buf.set_len(3) };
-			archive.read_points(BucketName(0), &mut points_buf[..]);		
+			archive.read_points(BucketName(0), &mut points_buf[..]);
 			let expected = vec![
 				Point(1440392088, 100.0),
 				Point(1440392090, 100.0),
@@ -268,7 +266,7 @@ mod tests {
 			assert_eq!(archive.archive_index(&bucket_name).0, 1);
 
 			unsafe{ points_buf.set_len(1) };
-			archive.read_points(bucket_name, &mut points_buf[..]);		
+			archive.read_points(bucket_name, &mut points_buf[..]);
 			assert_eq!(points_buf[0].0, 1440392090);
 			assert_eq!(points_buf[0].1, 8.0);
 		}

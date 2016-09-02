@@ -23,7 +23,7 @@ impl NamedPoint {
             Err(_) => return Err( "invalid utf8 character".to_string() )
         };
 
-        let parsed_lines : Vec<Result<NamedPoint,String>> = datagram.lines_any().map(|x| NamedPoint::parse_line(x) ).collect();
+        let parsed_lines : Vec<Result<NamedPoint,String>> = datagram.lines().map(|x| NamedPoint::parse_line(x) ).collect();
         if parsed_lines.iter().any(|x| x.is_err() ) {
         	Err("datagram had invalid entries. skipping all.".to_string())
         } else {
@@ -88,7 +88,6 @@ mod tests {
 
     use whisper::Point;
     use super::*;
-    use std::path::Path;
 
     #[bench]
     fn bench_good_datagram_line(b: &mut Bencher){
