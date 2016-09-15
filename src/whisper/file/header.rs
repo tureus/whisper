@@ -1,7 +1,7 @@
 use std::fmt;
 
 use memmap::MmapViewSync;
-use byteorder::{ ByteOrder, BigEndian, ReadBytesExt };
+use byteorder::{ ByteOrder, BigEndian };
 
 use super::archive::{ self, Archive };
 use super::super::point;
@@ -60,7 +60,7 @@ impl Header {
 
 		Header::new(agg_type, max_retention, x_files_factor)
 	}
-	
+
 	pub fn new(agg_type: AggregationType, max_ret: u32, xff: f32) -> Header {
 		Header {
 			aggregation_type: agg_type,

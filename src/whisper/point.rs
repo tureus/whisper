@@ -1,8 +1,8 @@
 use super::file::archive::BucketName;
 
-use std::io::{ Write, Cursor };
+use std::io::Cursor;
 
-use byteorder::{ByteOrder, BigEndian, WriteBytesExt };
+use byteorder::{ ByteOrder, BigEndian, WriteBytesExt };
 
 pub const POINT_SIZE : usize = 12;
 

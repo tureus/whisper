@@ -1,4 +1,4 @@
-#![feature(test, path_ext, dir_builder)]
+#![feature(test)]
 
 extern crate memmap;
 extern crate byteorder;

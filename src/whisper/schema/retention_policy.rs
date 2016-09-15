@@ -1,7 +1,7 @@
 use whisper::point::POINT_SIZE;
 use whisper::file::archive::ARCHIVE_INFO_SIZE;
 
-use byteorder::{ ByteOrder, BigEndian, WriteBytesExt };
+use byteorder::{ BigEndian, WriteBytesExt };
 use regex;
 
 use std::io::{ BufWriter, Write };
@@ -153,7 +153,7 @@ mod tests {
             precision: 1 *  60*60*24,
             retention: 60 * 60*60*24*365
         };
-        
+
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
         assert!(retention_opt.is_some());
         let retention_policy = retention_opt.unwrap();
