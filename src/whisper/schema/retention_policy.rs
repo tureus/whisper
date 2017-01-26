@@ -60,10 +60,10 @@ impl RetentionPolicy {
 }
 
 fn retention_capture_to_pair(regex_match: regex::Captures) -> Option<RetentionPolicy> {
-    let precision_opt = regex_match.at(1);
-    let precision_mult = regex_match.at(2).unwrap_or("s");
-    let retention_opt = regex_match.at(3);
-    let retention_mult = regex_match.at(4);
+    let precision_opt = regex_match.get(1).map(|m| m.as_str());
+    let precision_mult = regex_match.get(2).map(|m| m.as_str()).unwrap_or("s");
+    let retention_opt = regex_match.get(3).map(|m| m.as_str());
+    let retention_mult = regex_match.get(4).map(|m| m.as_str());
 
     if precision_opt.is_some() && retention_opt.is_some() {
         let precision = {
