@@ -20,9 +20,10 @@ pub struct WhisperCache {
 }
 
 impl WhisperCache {
-	pub fn new(base_path: &Path, size: usize, schema: Schema) -> WhisperCache {
+	pub fn new<P>(base_path: P, size: usize, schema: Schema) -> WhisperCache
+        where P: AsRef<Path> {
 		WhisperCache {
-			base_path: base_path.to_path_buf(),
+			base_path: base_path.as_ref().to_path_buf(),
 			open_files: LruCache::new(size),
 			schema: schema
 		}
@@ -86,9 +87,6 @@ impl WhisperCache {
 mod test {
 	extern crate test;
 	use test::Bencher;
-
-	use std::path::Path;
-
 	use whisper::{ WhisperCache, NamedPoint, Schema };
 
 	#[bench]
@@ -96,7 +94,7 @@ mod test {
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
 		let schema = Schema::new_from_retention_specs(default_specs);
 
-		let mut cache = WhisperCache::new(&Path::new("/tmp"), 100, schema);
+		let mut cache = WhisperCache::new("/tmp", 100, schema);
 		let current_time = 1434598525;
 
 		b.iter(move ||{

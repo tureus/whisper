@@ -53,11 +53,9 @@ pub fn main(){
                             .unwrap_or_else(|e| e.exit());
 
     let arg_file = args.arg_file.clone();
-    let path_str : &str = unsafe {
+    let path: &str = unsafe {
         arg_file.slice_unchecked(0, args.arg_file.len())
     };
-    let path = Path::new(path_str);
-
 
     let current_time = time::get_time().sec as u64;
 
@@ -78,19 +76,22 @@ pub fn main(){
     }
 }
 
-fn cmd_info(path: &Path) {
+fn cmd_info<P>(path: P)
+  where P: AsRef<Path> {
     let whisper_file = WhisperFile::open(path);
     // TODO: used to simpler of Display, not Debug
     println!("{:?}", whisper_file);
 }
 
-fn cmd_dump(path: &Path) {
+fn cmd_dump<P>(path: P)
+  where P: AsRef<Path> {
     let whisper_file = WhisperFile::open(path);
     println!("{:?}", whisper_file);
 }
 
 #[allow(unused_variables)] /*TODO: Remove once we reenable writing current_time*/
-fn cmd_update(args: Args, path: &Path, current_time: u64) {
+fn cmd_update<P>(args: Args, path: P, current_time: u64)
+  where P: AsRef<Path> {
     let mut file = WhisperFile::open(path);
     let point = Point(args.arg_timestamp.parse::<u32>().unwrap(),
         					args.arg_value.parse::<f64>().unwrap());
@@ -99,14 +100,16 @@ fn cmd_update(args: Args, path: &Path, current_time: u64) {
     file.write(/*current_time, TODO: reenable */ &point);
 }
 
-fn cmd_mark(args: Args, path: &Path, current_time: u64) {
+fn cmd_mark<P>(args: Args, path: P, current_time: u64)
+  where P: AsRef<Path> {
     let mut file = WhisperFile::open(path);
     let point = Point(current_time as u32, args.arg_value.parse::<f64>().unwrap());
 
     file.write(/*current_time, TODO: reenable */ &point);
 }
 
-fn cmd_thrash(args: Args, path: &Path, current_time: u64) {
+fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
+  where P: AsRef<Path> {
     let times = args.arg_times.parse::<u32>().unwrap();
     let mut file = WhisperFile::open(path);
     for index in 1..times {
@@ -117,7 +120,8 @@ fn cmd_thrash(args: Args, path: &Path, current_time: u64) {
     }
 }
 
-fn cmd_create(args: Args, path: &Path) {
+fn cmd_create<P>(args: Args, path: P)
+  where P: AsRef<Path> {
     let schema = Schema::new_from_retention_specs(args.arg_timespec);
     let new_result = WhisperFile::new(path, &schema);
     match new_result {
