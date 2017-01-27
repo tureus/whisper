@@ -111,14 +111,8 @@ impl Archive {
 		self.mmap_view.len()
 	}
 
-	#[inline]
-    fn bucket_name(&self, timestamp: u32) -> BucketName {
-        let bucket_name = timestamp - (timestamp % self.seconds_per_point);
-        BucketName(bucket_name)
-    }
-
     #[inline]
-    fn bucket(&self, timestamp: u32) -> BucketName {
+    fn bucket_name(&self, timestamp: u32) -> BucketName {
         let bucket_name = timestamp - (timestamp % self.seconds_per_point);
         BucketName(bucket_name)
     }

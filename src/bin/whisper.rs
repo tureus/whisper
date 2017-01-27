@@ -89,6 +89,7 @@ fn cmd_dump(path: &Path) {
     println!("{:?}", whisper_file);
 }
 
+#[allow(unused_variables)] /*TODO: Remove once we reenable writing current_time*/
 fn cmd_update(args: Args, path: &Path, current_time: u64) {
     let mut file = WhisperFile::open(path);
     let point = Point(args.arg_timestamp.parse::<u32>().unwrap(),
