@@ -92,7 +92,7 @@ mod test {
 	#[bench]
 	fn test_opening_new_whisper_file(b: &mut Bencher){
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
-		let schema = Schema::new_from_retention_specs(default_specs);
+		let schema = Schema::new_from_retention_specs(default_specs).unwrap();
 
 		let mut cache = WhisperCache::new("/tmp", 100, schema);
 		let current_time = 1434598525;
