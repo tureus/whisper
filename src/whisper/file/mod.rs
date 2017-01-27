@@ -74,8 +74,9 @@ Archive {} data:
 
 
 impl WhisperFile {
-	pub fn new(path: &Path, schema: &Schema) -> io::Result<WhisperFile> {
-		let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path));
+	pub fn new<P>(path: P, schema: &Schema) -> io::Result<WhisperFile>
+        where P: AsRef<Path> {
+		let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path.as_ref()));
 
 		// Allocate space on disk (could be costly!)
 		{
@@ -110,14 +111,15 @@ impl WhisperFile {
 
 		let mmap = Mmap::open(&opened_file, Protection::ReadWrite ).unwrap();
 
-		Ok( WhisperFile::open_mmap(path, mmap) )
+		Ok( WhisperFile::open_mmap(path.as_ref(), mmap) )
 	}
 
 	// TODO: open should validate contents of whisper file
 	// and return Result<WhisperFile, io::Error>
-	pub fn open(path: &Path) -> WhisperFile {
-		let mmap = Mmap::open_path(path, Protection::ReadWrite).unwrap();
-		WhisperFile::open_mmap(path, mmap)
+	pub fn open<P>(path: P) -> WhisperFile
+        where P: AsRef<Path> {
+		let mmap = Mmap::open_path(path.as_ref(), Protection::ReadWrite).unwrap();
+		WhisperFile::open_mmap(path.as_ref(), mmap)
 	}
 
 	fn open_mmap<P>(path: P, mmap: Mmap) -> WhisperFile
@@ -148,7 +150,6 @@ mod tests {
 	use whisper::{ Schema, WhisperFile, Point };
 	use super::header;
 
-	use std::path::Path;
 	use std::io::Cursor;
 	use std::io::Write;
 	use memmap::{ Mmap, Protection };
@@ -206,11 +207,11 @@ mod tests {
 
 	#[test]
 	fn test_write() {
-		let path = Path::new("/tmp/blah.wsp").to_path_buf();
+		let path = "/tmp/blah.wsp";
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
 		let schema = Schema::new_from_retention_specs(default_specs);
 
-		let mut file = WhisperFile::new(&path, &schema).unwrap();
+		let mut file = WhisperFile::new(path, &schema).unwrap();
 
 		file.write(&Point(10, 0.0))
 	}
