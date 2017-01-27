@@ -12,7 +12,7 @@ name="whisper"
 
 [dependencies]
 byteorder = "*"
-regex = "*"
+regex = "0.2.1"
 libc = "*"
 log = "*"
 env_logger = "*"

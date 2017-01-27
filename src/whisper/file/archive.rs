@@ -111,14 +111,8 @@ impl Archive {
 		self.mmap_view.len()
 	}
 
-	#[inline]
-    fn bucket_name(&self, timestamp: u32) -> BucketName {
-        let bucket_name = timestamp - (timestamp % self.seconds_per_point);
-        BucketName(bucket_name)
-    }
-
     #[inline]
-    fn bucket(&self, timestamp: u32) -> BucketName {
+    fn bucket_name(&self, timestamp: u32) -> BucketName {
         let bucket_name = timestamp - (timestamp % self.seconds_per_point);
         BucketName(bucket_name)
     }
@@ -219,9 +213,9 @@ mod tests {
 		let archive = Archive::new(2, 3, anon_view);
 
 		// Our bucket names are aligned, ts normalization is working
-		assert_eq!(archive.bucket(1440392088).0, 1440392088);
-		assert_eq!(archive.bucket(1440392090).0, 1440392090);
-		assert_eq!(archive.bucket(1440392092).0, 1440392092);
+		assert_eq!(archive.bucket_name(1440392088).0, 1440392088);
+		assert_eq!(archive.bucket_name(1440392090).0, 1440392090);
+		assert_eq!(archive.bucket_name(1440392092).0, 1440392092);
 
 		// Assert absolute index in to archive
 		assert_eq!(archive.archive_index(&BucketName(1440392088)).0, 0);

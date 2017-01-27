@@ -1,10 +1,10 @@
-#![feature(test)]
+#![cfg_attr(test, feature(test))]
 
 extern crate memmap;
 extern crate byteorder;
 extern crate regex;
 extern crate libc;
-extern crate test;
+#[cfg(test)] extern crate test;
 extern crate lru_cache;
 
 #[macro_use]
