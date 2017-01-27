@@ -100,7 +100,7 @@ mod test {
 		let current_time = 1434598525;
 
 		b.iter(move ||{
-			let metric = NamedPoint::new("hey.there.bear".to_string(), 1434598525, 0.0);
+			let metric = NamedPoint::new("hey.there.bear".to_string(), current_time, 0.0);
 			cache.write(metric).unwrap();
 		});
 	}
