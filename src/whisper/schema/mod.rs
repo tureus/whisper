@@ -1,7 +1,5 @@
 mod retention_policy;
 
-use std::process::exit;
-
 use whisper::file::STATIC_HEADER_SIZE;
 use whisper::file::ARCHIVE_INFO_SIZE;
 pub use self::retention_policy::RetentionPolicy;
@@ -12,24 +10,16 @@ pub struct Schema {
 }
 
 impl Schema {
-    // TODO: Change to Result type
-    pub fn new_from_retention_specs(specs: Vec<String>) -> Schema {
-        let retention_policies : Vec<RetentionPolicy> = {
-            let expanded_pairs : Vec<Option<RetentionPolicy>> = specs.iter().map(|ts| {
-                RetentionPolicy::spec_to_retention_policy(ts)
-            }).collect();
+    pub fn new_from_retention_specs(specs: Vec<String>) -> Result<Schema, String> {
+        let retention_policies: Result<Vec<RetentionPolicy>, String> =
+            specs.iter().fold(Ok(vec![]), |policies_result, next| {
+                policies_result
+                    .and_then(|mut policies| RetentionPolicy::spec_to_retention_policy(next)
+                        .map(|policy| { policies.push(policy); policies })
+                    )
+            });
 
-            if expanded_pairs.iter().any(|x| x.is_none()) {
-                let specs_iter = specs.iter();
-                let pairs_iter = expanded_pairs.iter();
-                let error_pairs : Vec<(&String, &Option<RetentionPolicy>)> = specs_iter.zip(pairs_iter).collect();
-                validate_retention_policies(&error_pairs);
-            }
-
-            expanded_pairs.iter().filter(|x| x.is_some()).map(|x| x.unwrap()).collect()
-        };
-
-        Schema{ retention_policies: retention_policies }
+        retention_policies.map(|policies| Schema { retention_policies: policies })
     }
 
     pub fn header_size_on_disk(&self) -> u32 {
@@ -55,21 +45,11 @@ impl Schema {
     }
 }
 
-fn validate_retention_policies(expanded_pairs: &Vec<(&String, &Option<RetentionPolicy>)> ) {
-    let _ : Vec<()> = expanded_pairs.iter().map(|pair: &(&String, &Option<RetentionPolicy>)| {
-        let (ref string, ref opt) = *pair;
-        if opt.is_none() {
-            println!("error: {} is not a valid retention policy", string);
-            exit(1);
-        }
-    }).collect();
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use whisper::file::{ STATIC_HEADER_SIZE, ARCHIVE_INFO_SIZE };
-    
+
     #[test]
     fn test_size_on_disk(){
         let first_policy = RetentionPolicy {

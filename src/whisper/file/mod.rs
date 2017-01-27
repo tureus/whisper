@@ -209,7 +209,7 @@ mod tests {
 	fn test_write() {
 		let path = "/tmp/blah.wsp";
 		let default_specs = vec!["1s:60s".to_string(), "1m:1y".to_string()];
-		let schema = Schema::new_from_retention_specs(default_specs);
+		let schema = Schema::new_from_retention_specs(default_specs).unwrap();
 
 		let mut file = WhisperFile::new(path, &schema).unwrap();
 

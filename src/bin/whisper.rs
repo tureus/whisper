@@ -122,7 +122,7 @@ fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
 
 fn cmd_create<P>(args: Args, path: P)
   where P: AsRef<Path> {
-    let schema = Schema::new_from_retention_specs(args.arg_timespec);
+    let schema = Schema::new_from_retention_specs(args.arg_timespec).unwrap();
     let new_result = WhisperFile::new(path, &schema);
     match new_result {
     	// TODO change to Display

@@ -7,8 +7,6 @@ use regex;
 use std::io::{ BufWriter, Write };
 use std::fs::File;
 
-use std::process::exit;
-
 // A RetentionPolicy is the abstract form of an ArchiveInfo
 // It does not know it's position in the file. Should it just
 // be collapsed in to ArchiveInfo? Possibly.
@@ -19,15 +17,13 @@ pub struct RetentionPolicy {
 }
 
 impl RetentionPolicy {
-    pub fn spec_to_retention_policy(spec: &str) -> Option<RetentionPolicy> {
+    pub fn spec_to_retention_policy(spec: &str) -> Result<RetentionPolicy, String> {
         // TODO: regex should be built as const using macro regex!
         // but that's only available in nightlies.
         let retention_matcher = regex::Regex::new({r"^(\d+)([smhdwy])?:(\d+)([smhdwy])?$"}).unwrap();
         match retention_matcher.captures(spec) {
-            Some(regex_match) => {
-                retention_capture_to_pair(regex_match)
-            },
-            None => None
+            Some(regex_match) => retention_capture_to_pair(regex_match),
+            None => Err(format!("error: {} is not a valid retention policy", spec))
         }
     }
 
@@ -59,59 +55,50 @@ impl RetentionPolicy {
     }
 }
 
-fn retention_capture_to_pair(regex_match: regex::Captures) -> Option<RetentionPolicy> {
+fn retention_capture_to_pair(regex_match: regex::Captures) -> Result<RetentionPolicy, String> {
     let precision_opt = regex_match.get(1).map(|m| m.as_str());
     let precision_mult = regex_match.get(2).map(|m| m.as_str()).unwrap_or("s");
     let retention_opt = regex_match.get(3).map(|m| m.as_str());
     let retention_mult = regex_match.get(4).map(|m| m.as_str());
 
-    if precision_opt.is_some() && retention_opt.is_some() {
-        let precision = {
-            let base_precision = precision_opt.unwrap().parse::<u32>().unwrap();
-            base_precision * mult_str_to_num(precision_mult)
-        };
-
-        let retention = {
-            let base_retention = retention_opt.unwrap().parse::<u32>().unwrap();
-
-            match retention_mult {
-                Some(mult_str) => {
-                    base_retention * mult_str_to_num(mult_str)
-                },
-                None => {
-                    // user has not provided a multipler so this is interpreted
-                    // as the number of points so we have to
-                    // calculate retention from the number of points
-                    base_retention * precision
-                }
-            }
-        };
-
-        let retention_spec = RetentionPolicy {
-            precision: precision,
-            retention: retention
-        };
-
-        Some(retention_spec)
-    } else {
-        None
+    match (precision_opt, retention_opt) {
+        (Some(precision), Some(retention)) => {
+            precision.parse::<u32>()
+                .map_err(|e| format!("Unable to parse precision {} in schema as u32: {}", precision, e))
+                .and_then(|base_precision| mult_str_to_num(precision_mult).map(|mult| base_precision * mult))
+                .and_then(|precision| {
+                    retention.parse::<u32>()
+                        .map_err(|e| format!("Unable to parse retention {} in schema as u32: {}", retention, e))
+                        .and_then(|base_retention| match retention_mult {
+                            Some(mult_str) => {
+                                mult_str_to_num(mult_str).map(|mult| base_retention * mult)
+                            },
+                            None => {
+                                // user has not provided a multipler so this is interpreted
+                                // as the number of points so we have to
+                                // calculate retention from the number of points
+                                Ok(base_retention * precision)
+                            }
+                        }).map(|retention| RetentionPolicy {
+                            precision: precision,
+                            retention: retention
+                        })
+            })
+        },
+        _ => Err("Invalid precision or retention period provided in retention policy".to_string())
     }
 }
 
-fn mult_str_to_num(mult_str: &str) -> u32 {
+fn mult_str_to_num(mult_str: &str) -> Result<u32, String> {
     // TODO: is this exactly how whisper does it?
     match mult_str {
-        "s" => 1,
-        "m" => 60,
-        "h" => 60*60,
-        "d" => 60*60*24,
-        "w" => 60*60*24*7,
-        "y" => 60*60*24*365,
-        _   => {
-            // should never pass regex
-            println!("All retention policies must be valid. Exiting.");
-            exit(1);
-        }
+        "s" => Ok(1),
+        "m" => Ok(60),
+        "h" => Ok(60*60),
+        "d" => Ok(60*60*24),
+        "w" => Ok(60*60*24*7),
+        "y" => Ok(60*60*24*365),
+        _ => Err(format!("Unrecognized time multiplier specified: {}", mult_str)) //Regex should ensure this is impossible
     }
 }
 
@@ -140,7 +127,7 @@ mod tests {
         };
 
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
-        assert!(retention_opt.is_some());
+        assert!(retention_opt.is_ok());
         let retention_policy = retention_opt.unwrap();
         assert_eq!(retention_policy.precision, expected.precision);
         assert_eq!(retention_policy.retention, expected.retention);
@@ -155,7 +142,7 @@ mod tests {
         };
 
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
-        assert!(retention_opt.is_some());
+        assert!(retention_opt.is_ok());
         let retention_policy = retention_opt.unwrap();
         assert_eq!(retention_policy.precision, expected.precision);
         assert_eq!(retention_policy.retention, expected.retention);
