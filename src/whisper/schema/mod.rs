@@ -2,6 +2,7 @@ mod retention_policy;
 
 use whisper::file::STATIC_HEADER_SIZE;
 use whisper::file::ARCHIVE_INFO_SIZE;
+use whisper::errors::schema::Result;
 pub use self::retention_policy::RetentionPolicy;
 
 #[derive(Debug)]
@@ -10,8 +11,8 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn new_from_retention_specs(specs: Vec<String>) -> Result<Schema, String> {
-        let retention_policies: Result<Vec<RetentionPolicy>, String> =
+    pub fn new_from_retention_specs(specs: Vec<String>) -> Result<Schema> {
+        let retention_policies: Result<Vec<RetentionPolicy>> =
             specs.iter().fold(Ok(vec![]), |policies_result, next| {
                 policies_result
                     .and_then(|mut policies| RetentionPolicy::spec_to_retention_policy(next)

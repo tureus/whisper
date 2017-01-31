@@ -2,6 +2,7 @@ mod file;
 mod point;
 mod schema;
 mod cache;
+mod errors;
 
 pub use self::file::WhisperFile;
 pub use self::point::Point;
