@@ -6,5 +6,3 @@ error_chain! {
     }
   }
 }
-
-

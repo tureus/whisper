@@ -1,6 +1,7 @@
 use whisper::point::POINT_SIZE;
 use whisper::file::archive::ARCHIVE_INFO_SIZE;
 use whisper::errors::schema::{ErrorKind, Result, ResultExt};
+use whisper::errors::ChainedError;
 
 use byteorder::{ BigEndian, WriteBytesExt };
 use regex;
@@ -156,33 +157,24 @@ mod tests {
     fn test_invalid_empty_spec() {
         let spec = "";
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
-        let expected = format!("Policy '{}' is in an invalid format", spec);
-        assert_matches! {
-          retention_opt.unwrap_err(),
-          Error(ErrorKind::InvalidRetentionPolicy(ref reason), _) if reason == &expected
-        }
+        let expected = format!("Error: Invalid retention policy: Policy '{}' is in an invalid format\n", spec);
+        assert_eq!(retention_opt.unwrap_err().display().to_string(), expected)
     }
 
     #[test]
     fn test_invalid_precision_spec() {
         let spec = "1x:60y";
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
-        let expected = format!("Policy '{}' is in an invalid format", spec);
-        assert_matches! {
-          retention_opt.unwrap_err(),
-          Error(ErrorKind::InvalidRetentionPolicy(ref reason), _) if reason == &expected
-        }
+        let expected = format!("Error: Invalid retention policy: Policy '{}' is in an invalid format\n", spec);
+        assert_eq!(retention_opt.unwrap_err().display().to_string(), expected)
     }
 
     #[test]
     fn test_invalid_retention_spec() {
         let spec = "15:60e";
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
-        let expected = format!("Policy '{}' is in an invalid format", spec);
-        assert_matches! {
-          retention_opt.unwrap_err(),
-          Error(ErrorKind::InvalidRetentionPolicy(ref reason), _) if reason == &expected
-        }
+        let expected = format!("Error: Invalid retention policy: Policy '{}' is in an invalid format\n", spec);
+        assert_eq!(retention_opt.unwrap_err().display().to_string(), expected)
     }
 
     #[test]
@@ -190,11 +182,8 @@ mod tests {
         let precision = ::std::u32::MAX as u64 + 1;
         let spec = format!("{}s:60y", precision.to_string());
         let retention_opt = RetentionPolicy::spec_to_retention_policy(&spec);
-        let expected = format!("Unable to parse precision '{}' in policy '{}' as u32", precision, spec);
-        assert_matches! {
-          retention_opt.unwrap_err(),
-          Error(ErrorKind::InvalidRetentionPolicy(ref reason), _) if reason == &expected
-        }
+        let expected = format!("Error: Invalid retention policy: Unable to parse precision '{}' in policy '{}' as u32\nCaused by: number too large to fit in target type\n", precision, spec);
+        assert_eq!(retention_opt.unwrap_err().display().to_string(), expected)
     }
 
     #[test]
@@ -202,21 +191,15 @@ mod tests {
         let retention = ::std::u32::MAX as u64 + 7;
         let spec = format!("30s:{}y", retention.to_string());
         let retention_opt = RetentionPolicy::spec_to_retention_policy(&spec);
-        let expected = format!("Unable to parse retention '{}' in policy '{}' as u32", retention, spec);
-        assert_matches! {
-          retention_opt.unwrap_err(),
-          Error(ErrorKind::InvalidRetentionPolicy(ref reason), _) if reason == &expected
-        }
+        let expected = format!("Error: Invalid retention policy: Unable to parse retention '{}' in policy '{}' as u32\nCaused by: number too large to fit in target type\n", retention, spec);
+        assert_eq!(retention_opt.unwrap_err().display().to_string(), expected)
     }
 
     #[test]
     fn test_missing_precision_amount() {
         let spec = "15s";
         let retention_opt = RetentionPolicy::spec_to_retention_policy(spec);
-        let expected = format!("Policy '{}' is in an invalid format", spec);
-        assert_matches! {
-          retention_opt.unwrap_err(),
-          Error(ErrorKind::InvalidRetentionPolicy(ref reason), _) if reason == &expected
-        }
+        let expected = format!("Error: Invalid retention policy: Policy '{}' is in an invalid format\n", spec);
+        assert_eq!(retention_opt.unwrap_err().display().to_string(), expected)
     }
 }
