@@ -12,13 +12,14 @@ pub use self::archive::ARCHIVE_INFO_SIZE;
 
 use whisper::Point;
 use whisper::Schema;
+use whisper::errors::file::{Error, ErrorKind, Result, ResultExt};
 
 // Modules needed to create file on disk
 use std::fs::OpenOptions;
 extern crate libc;
 use self::libc::ftruncate;
 use std::os::unix::prelude::AsRawFd;
-use std::io::{ self, Error};
+use std::io;
 use std::path::{ Path, PathBuf };
 use std::fmt;
 
@@ -74,7 +75,7 @@ Archive {} data:
 
 
 impl WhisperFile {
-	pub fn new<P>(path: P, schema: &Schema) -> io::Result<WhisperFile>
+	pub fn new<P>(path: P, schema: &Schema) -> Result<WhisperFile>
         where P: AsRef<Path> {
 		let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path.as_ref()));
 
@@ -87,7 +88,7 @@ impl WhisperFile {
 				ftruncate(raw_fd, size_needed as i64)
 			};
 			if retval != 0 {
-				return Err(Error::last_os_error());
+				return Err(ErrorKind::Io(io::Error::last_os_error()).into());
 			}
 		}
 
@@ -109,17 +110,18 @@ impl WhisperFile {
 			archive_offset = archive_offset + retention_policy.size_on_disk();
 		}
 
-		let mmap = Mmap::open(&opened_file, Protection::ReadWrite ).unwrap();
-
-		Ok( WhisperFile::open_mmap(path.as_ref(), mmap) )
+		Mmap::open(&opened_file, Protection::ReadWrite).map(|mmap| {
+		    WhisperFile::open_mmap(path.as_ref(), mmap)
+                }).map_err(|e| ErrorKind::Io(e).into())
 	}
 
 	// TODO: open should validate contents of whisper file
 	// and return Result<WhisperFile, io::Error>
-	pub fn open<P>(path: P) -> WhisperFile
+	pub fn open<P>(path: P) -> Result<WhisperFile>
         where P: AsRef<Path> {
-		let mmap = Mmap::open_path(path.as_ref(), Protection::ReadWrite).unwrap();
-		WhisperFile::open_mmap(path.as_ref(), mmap)
+                  Mmap::open_path(path.as_ref(), Protection::ReadWrite).map(|mmap| {
+                      WhisperFile::open_mmap(path.as_ref(), mmap)
+                  }).map_err(|e| ErrorKind::Io(e).into())
 	}
 
 	fn open_mmap<P>(path: P, mmap: Mmap) -> WhisperFile
