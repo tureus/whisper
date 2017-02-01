@@ -11,7 +11,7 @@ repository = "https://github.com/tureus/whisper.git"
 name="whisper"
 
 [dependencies]
-byteorder = "*"
+byteorder = "1.0.0"
 regex = "0.2.1"
 libc = "*"
 log = "*"
