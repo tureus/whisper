@@ -9,7 +9,6 @@ extern crate whisper;
 
 use docopt::Docopt;
 use whisper::{WhisperFile, Point, Schema};
-use whisper::errors::ChainedError;
 
 use std::path::Path;
 
@@ -99,7 +98,7 @@ fn cmd_update<P>(args: Args, path: P, current_time: u64)
       debug!("Updating TS: {} with value: {}", point.0, point.1);
 
       file.write(/*current_time, TODO: reenable */ &point);
-    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e.display()))
+    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e))
 }
 
 fn cmd_mark<P>(args: Args, path: P, current_time: u64)
@@ -108,7 +107,7 @@ fn cmd_mark<P>(args: Args, path: P, current_time: u64)
       let point = Point(current_time as u32, args.arg_value.parse::<f64>().unwrap());
 
       file.write(/*current_time, TODO: reenable */ &point);
-    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e.display()))
+    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e))
 }
 
 fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
@@ -121,7 +120,7 @@ fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
 
           file.write(&point);
       }
-    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e.display()))
+    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e))
 }
 
 fn cmd_create<P>(args: Args, path: P)

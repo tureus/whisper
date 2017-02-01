@@ -2,7 +2,7 @@ mod retention_policy;
 
 use whisper::file::STATIC_HEADER_SIZE;
 use whisper::file::ARCHIVE_INFO_SIZE;
-use whisper::errors::schema::Result;
+use whisper::errors::Result;
 pub use self::retention_policy::RetentionPolicy;
 
 #[derive(Debug)]

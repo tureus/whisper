@@ -3,10 +3,9 @@
 use whisper::{ WhisperFile, Schema };
 use std::path::{ Path, PathBuf };
 use std::fs::DirBuilder;
-use std::io;
+use std::io::Result;
 use std::sync::{ Arc, Mutex };
 use lru_cache::LruCache;
-use whisper::errors::file::{Error, ErrorKind, Result, ResultExt};
 
 mod named_point;
 pub use self::named_point::NamedPoint;

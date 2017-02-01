@@ -12,7 +12,7 @@ pub use self::archive::ARCHIVE_INFO_SIZE;
 
 use whisper::Point;
 use whisper::Schema;
-use whisper::errors::file::{Error, ErrorKind, Result, ResultExt};
+use std::io::Result;
 
 // Modules needed to create file on disk
 use std::fs::OpenOptions;
@@ -88,7 +88,7 @@ impl WhisperFile {
 				ftruncate(raw_fd, size_needed as i64)
 			};
 			if retval != 0 {
-				return Err(ErrorKind::Io(io::Error::last_os_error()).into());
+				return Err(io::Error::last_os_error());
 			}
 		}
 
@@ -112,7 +112,7 @@ impl WhisperFile {
 
 		Mmap::open(&opened_file, Protection::ReadWrite).map(|mmap| {
 		    WhisperFile::open_mmap(path.as_ref(), mmap)
-                }).map_err(|e| ErrorKind::Io(e).into())
+                })
 	}
 
 	// TODO: open should validate contents of whisper file
@@ -121,7 +121,7 @@ impl WhisperFile {
         where P: AsRef<Path> {
                   Mmap::open_path(path.as_ref(), Protection::ReadWrite).map(|mmap| {
                       WhisperFile::open_mmap(path.as_ref(), mmap)
-                  }).map_err(|e| ErrorKind::Io(e).into())
+                  })
 	}
 
 	fn open_mmap<P>(path: P, mmap: Mmap) -> WhisperFile
