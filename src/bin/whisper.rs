@@ -94,7 +94,7 @@ fn cmd_update<P>(args: Args, path: P, current_time: u64)
   where P: AsRef<Path> {
     WhisperFile::open(path).map(|mut file| {
       let point = Point(args.arg_timestamp.parse::<u32>().unwrap(),
-                                                  args.arg_value.parse::<f64>().unwrap());
+                        args.arg_value.parse::<f64>().unwrap());
       debug!("Updating TS: {} with value: {}", point.0, point.1);
 
       file.write(/*current_time, TODO: reenable */ &point);
@@ -116,7 +116,7 @@ fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
     WhisperFile::open(path).map(|mut file| {
       for index in 1..times {
           let point = Point(current_time as u32+index,
-                                            args.arg_value.parse::<f64>().unwrap());
+                            args.arg_value.parse::<f64>().unwrap());
 
           file.write(&point);
       }
