@@ -3,7 +3,7 @@
 use whisper::{ WhisperFile, Schema };
 use std::path::{ Path, PathBuf };
 use std::fs::DirBuilder;
-use std::io;
+use std::io::Result;
 use std::sync::{ Arc, Mutex };
 use lru_cache::LruCache;
 
@@ -29,38 +29,27 @@ impl WhisperCache {
 		}
 	}
 
-	pub fn write(&mut self, named_point: NamedPoint) -> Result<(), io::Error> {
+	pub fn write(&mut self, named_point: NamedPoint) -> Result<()> {
 		let metric_rel_path = named_point.rel_path();
+		self.get(&metric_rel_path).map(|cache_entry| {
+                        let mut whisper_file = cache_entry.lock().unwrap();
 
-		let cache_entry = try!( self.get(metric_rel_path) );
-		let mut whisper_file = cache_entry.lock().unwrap();
-
-		// We assume opened files always succeed in writes
-		whisper_file.write(&named_point.point());
-		Ok(())
+                        // We assume opened files always succeed in writes
+                        whisper_file.write(&named_point.point());
+                })
 	}
 
-	fn get(&mut self, metric_rel_path: PathBuf) -> Result< &WhisperMutex, io::Error> {
-
-		if self.open_files.contains_key(&metric_rel_path) {
-
+	fn get(&mut self, metric_rel_path: &PathBuf) -> Result<&WhisperMutex> {
+		if self.open_files.contains_key(metric_rel_path) {
 			debug!("file cache hit. resolved {:?}", metric_rel_path);
-			Ok( self.open_files.get_mut(&metric_rel_path).unwrap() )
-
+			Ok(self.open_files.get_mut(metric_rel_path).unwrap())
 		} else {
-
 			// debug!("file cache miss. resolving {:?}", metric_rel_path);
-
-			let path_for_insert = metric_rel_path.clone();
-			let path_for_relookup = metric_rel_path.clone();
-
+			let path_in_cache = metric_rel_path;
 			let path_on_disk = self.base_path.join(metric_rel_path);
-
 			let whisper_file = if path_on_disk.exists() && path_on_disk.is_file() {
-
 				debug!("`{:?}` exists on disk. opening.", path_on_disk);
-				WhisperFile::open(&path_on_disk)
-
+				try!(WhisperFile::open(&path_on_disk))
 			} else {
 
 				// Verify the folder structure is present.
@@ -71,15 +60,13 @@ impl WhisperCache {
 					try!( DirBuilder::new().recursive(true).create( path_on_disk.parent().unwrap() ) );
 				}
 				debug!("`{:?}` must now be created", path_on_disk);
-				try!( WhisperFile::new(&path_on_disk, &self.schema) )
+				try!(WhisperFile::new(&path_on_disk, &self.schema))
 
 			};
 
-			self.open_files.insert(path_for_insert, Arc::new( Mutex::new(whisper_file) ) );
-			Ok( self.open_files.get_mut(&path_for_relookup).unwrap() )
-
+			self.open_files.insert(path_in_cache.clone(), Arc::new(Mutex::new(whisper_file)));
+			Ok(self.open_files.get_mut(path_in_cache).unwrap())
 		}
-
 	}
 }
 
