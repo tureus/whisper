@@ -13,24 +13,15 @@ pub enum AggregationType {
 }
 
 impl AggregationType {
-  pub fn aggregate(&self, points: &[point::Point], range: u32) -> f64 {
+  pub fn aggregate(&self, points: &[point::Point]) -> f64 {
       match *self {
         AggregationType::Average => {
-          let count = points.iter()
-            .filter(|&&point::Point(t, _)| t >= range)
-            .count();
-          let sum = points
-            .iter()
-            .filter(|&&point::Point(t, _)| t >= range)
-            .map(|&point::Point(_, n)| n)
-            .sum::<f64>();
-          if sum == 0.0 { 0.0 } else { sum / count as f64}
+          if points.is_empty() { return 0.0 };
+          let count = points.len() as f64;
+          let sum: f64 = points.iter().map(point::Point::value).sum();
+          sum / count
         },
-        AggregationType::Sum => points
-          .iter()
-          .filter(|&&point::Point(t, _)| t >= range)
-          .map(|&point::Point(_, n)| n)
-          .sum::<f64>()
+        AggregationType::Sum => points.iter().map(point::Point::value).sum()
       }
     }
 }

@@ -107,6 +107,11 @@ impl Archive {
     }
 
     #[inline]
+    pub fn retention(&self) -> usize {
+        self.seconds_per_point as usize * self.points
+    }
+
+    #[inline]
     pub fn size(&self) -> usize {
         self.mmap_view.len()
     }
@@ -125,21 +130,18 @@ impl Archive {
         if anchor_bucket_name.0 == 0 {
             ArchiveIndex(0)
         } else {
-            let time_distance = bucket_name.0 + anchor_bucket_name.0;
-            // let distance_in_points = time_distance / self.seconds_per_point;
-            // let point_distance = ( anchor_bucket_name.0 - bucket_name.0 ) % (self.points as u32);
-            let point_distance = time_distance / self.seconds_per_point;
-            // panic!("({}-{}) % {} = {}", anchor_bucket_name.0, bucket_name.0, self.points, point_distance);
-            let index = Archive::py_mod(point_distance, self.points as u32);
+            let time_distance = bucket_name.0 as i64 - anchor_bucket_name.0 as i64;
+            let point_distance = time_distance / self.seconds_per_point as i64;
+            let index = Archive::py_mod(point_distance, self.points as i64);
             ArchiveIndex(index)
         }
     }
 
-    fn py_mod(input: u32, base: u32) -> u32 {
-        let remainder = input as i64 % base as i64;
+    fn py_mod(input: i64, base: i64) -> u32 {
+        let remainder = input % base;
 
         if remainder < 0 {
-            (base as i64 + remainder) as u32
+            (base + remainder) as u32
         } else {
             (remainder) as u32
         }

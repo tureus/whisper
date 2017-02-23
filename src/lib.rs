@@ -6,6 +6,7 @@ extern crate regex;
 extern crate libc;
 #[cfg(test)] extern crate test;
 extern crate lru_cache;
+extern crate time;
 
 #[macro_use]
 extern crate log;
