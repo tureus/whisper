@@ -21,6 +21,8 @@ use std::os::unix::prelude::AsRawFd;
 use std::io::{ self, Error};
 use std::path::{ Path, PathBuf };
 use std::fmt;
+use std::cmp;
+use std::iter::repeat;
 
 pub struct WhisperFile {
 	pub path: PathBuf,
@@ -74,6 +76,24 @@ Archive {} data:
 
 
 impl WhisperFile {
+        fn new_transient(schema: &Schema) -> WhisperFile {
+            let path = "/dev/null".into();
+            let header = Header::new(AggregationType::Average, schema.max_retention(), 0.5);
+            let archives = schema.retention_policies.iter().map(|policy| {
+                Archive::new(
+                    policy.precision,
+                    policy.points() as usize,
+                    Mmap::anonymous(policy.size_on_disk() as usize, Protection::ReadWrite).unwrap().into_view_sync()
+                )
+            }).collect();
+
+            WhisperFile {
+                path: path,
+                header: header,
+                archives: archives
+            }
+        }
+
 	pub fn new<P>(path: P, schema: &Schema) -> io::Result<WhisperFile>
         where P: AsRef<Path> {
 		let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path.as_ref()));
@@ -92,7 +112,7 @@ impl WhisperFile {
 		}
 
 		let xff = 0.5;
-		let header = Header::new(AggregationType::Unknown, schema.max_retention(), xff);
+		let header = Header::new(AggregationType::Average, schema.max_retention(), xff);
 		{
 			try!( opened_file.write_u32::<BigEndian>( header.aggregation_type.to_u32() ));
 			try!( opened_file.write_u32::<BigEndian>( header.max_retention ) );
@@ -141,8 +161,37 @@ impl WhisperFile {
 	}
 
 	pub fn write(&mut self, point: &Point) {
-		self.archives[0].write(&point);
+            let mut point = point.clone();
+
+            //Allocate the largest list of null points we need
+            let longest_archive = self.archives.iter().map(|a| a.points()).max().unwrap_or(0);
+            let mut max_points: Vec<Point> = repeat(Point::default()).take(longest_archive).collect();
+
+            //Pair each archive w/ the seconds per point of the next-lower-precision archive
+            let seconds_per_point: Vec<u32> = self.archives.iter().map(|a| a.seconds_per_point()).skip(1).collect();
+
+            for (mut archive, next_spp) in self.archives.iter_mut().zip(seconds_per_point) {
+                archive.write(&point);
+                let spp = archive.seconds_per_point();
+                let points_in_range = cmp::min((next_spp / spp) as usize, archive.points());
+                let next_timestamp = point.0 - (point.0 % next_spp);
+                let from = archive::BucketName(next_timestamp);
+                let points = &mut max_points[0..points_in_range];
+                archive.read_points(from, points).unwrap();
+
+                point.0 = next_timestamp;
+                point.1 = self.header.aggregation_type.aggregate(points, next_timestamp);
+            }
+            self.archives.last_mut().map(|mut a| a.write(&point));
 	}
+
+        fn read_all(&self) -> Vec<Vec<Point>> {
+            self.archives.iter().map(|archive| {
+                let mut points: Vec<Point> = repeat(Point::default()).take(archive.points()).collect();
+                archive.read_points(archive::BucketName(0), &mut points).unwrap();
+                points
+            }).collect()
+        }
 }
 
 #[cfg(test)]
@@ -193,7 +242,7 @@ mod tests {
 
 		let hdr = header::Header::new_from_slice(unsafe{ anon_mmap.as_mut_slice() });
 
-		assert_eq!(hdr.aggregation_type(), header::AggregationType::Unknown);
+		assert_eq!(hdr.aggregation_type(), header::AggregationType::Average);
 		assert_eq!(hdr.max_retention(), 300);
 		assert_eq!(hdr.x_files_factor(), 0.5);
 
@@ -218,7 +267,34 @@ mod tests {
 
 	#[test]
 	fn test_write_aggregation() {
+            let default_specs = vec!["1s:3s".to_string(), "1m:5m".to_string()];
+            let schema = Schema::new_from_retention_specs(default_specs).unwrap();
+            let mut file = WhisperFile::new_transient(&schema);
 
+            file.write(&Point(1, 1.1));
+            file.write(&Point(3, 3.1));
+            file.write(&Point(9, 9.1));
+            file.write(&Point(15, 15.1));
+            file.write(&Point(65, 65.1));
+
+            let result = file.read_all();
+            assert_eq!(result, vec![vec![]]);
+	}
+
+	#[test]
+	fn test_read_all() {
+            let default_specs = vec!["1s:3s".to_string(), "1m:5m".to_string()];
+            let schema = Schema::new_from_retention_specs(default_specs).unwrap();
+            let mut file = WhisperFile::new_transient(&schema);
+
+            file.write(&Point(1, 1.1));
+            file.write(&Point(3, 3.1));
+            file.write(&Point(9, 9.1));
+            file.write(&Point(15, 15.1));
+            file.write(&Point(65, 65.1));
+
+            let result = file.read_all();
+            assert_eq!(result, vec![vec![]]);
 	}
 
 	#[test]

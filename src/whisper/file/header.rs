@@ -8,15 +8,38 @@ use super::super::point;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum AggregationType {
-	Average,
-	Unknown
+        Average,
+	Sum
+}
+
+impl AggregationType {
+  pub fn aggregate(&self, points: &[point::Point], range: u32) -> f64 {
+      match *self {
+        AggregationType::Average => {
+          let count = points.iter()
+            .filter(|&&point::Point(t, _)| t >= range)
+            .count();
+          let sum = points
+            .iter()
+            .filter(|&&point::Point(t, _)| t >= range)
+            .map(|&point::Point(_, n)| n)
+            .sum::<f64>();
+          if sum == 0.0 { 0.0 } else { sum / count as f64}
+        },
+        AggregationType::Sum => points
+          .iter()
+          .filter(|&&point::Point(t, _)| t >= range)
+          .map(|&point::Point(_, n)| n)
+          .sum::<f64>()
+      }
+    }
 }
 
 impl fmt::Display for AggregationType {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
 			AggregationType::Average => write!(f, "average"),
-			AggregationType::Unknown => write!(f, "unknown")
+			AggregationType::Sum => write!(f, "sum")
 		}
 	}
 }
@@ -24,14 +47,14 @@ impl fmt::Display for AggregationType {
 impl AggregationType {
 	pub fn from_u32(val: u32) -> AggregationType {
 		match val {
-			_ => AggregationType::Unknown
+			_ => AggregationType::Average
 		}
 	}
 
 	pub fn to_u32(&self) -> u32 {
 		match *self {
 			AggregationType::Average => 0,
-			AggregationType::Unknown => 10
+			AggregationType::Sum => 10
 		}
 	}
 }

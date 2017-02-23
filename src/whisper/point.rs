@@ -6,7 +6,7 @@ use byteorder::{ ByteOrder, BigEndian, WriteBytesExt };
 
 pub const POINT_SIZE : usize = 12;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Default,Clone)]
 pub struct Point(pub u32, pub f64);
 
 impl Point {
