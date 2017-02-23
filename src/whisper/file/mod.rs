@@ -162,27 +162,49 @@ impl WhisperFile {
 
 	pub fn write(&mut self, point: &Point) {
             let mut point = point.clone();
-
             //Allocate the largest list of null points we need
             let longest_archive = self.archives.iter().map(|a| a.points()).max().unwrap_or(0);
             let mut max_points: Vec<Point> = repeat(Point::default()).take(longest_archive).collect();
 
-            //Pair each archive w/ the seconds per point of the next-lower-precision archive
-            let seconds_per_point: Vec<u32> = self.archives.iter().map(|a| a.seconds_per_point()).skip(1).collect();
+            enum WriteState {
+              Initial,
+              Aggregate(usize),
+              Finished
+            };
 
-            for (mut archive, next_spp) in self.archives.iter_mut().zip(seconds_per_point) {
-                archive.write(&point);
-                let spp = archive.seconds_per_point();
-                let points_in_range = cmp::min((next_spp / spp) as usize, archive.points());
-                let next_timestamp = point.0 - (point.0 % next_spp);
-                let from = archive::BucketName(next_timestamp);
-                let points = &mut max_points[0..points_in_range];
-                archive.read_points(from, points).unwrap();
+            (0..self.archives.len()).fold(WriteState::Initial, |state, index| {
+                match state {
+                  WriteState::Initial => {
+                    self.archives[index].write(&point);
+                    WriteState::Aggregate(index)
+                  },
 
-                point.0 = next_timestamp;
-                point.1 = self.header.aggregation_type.aggregate(points, next_timestamp);
-            }
-            self.archives.last_mut().map(|mut a| a.write(&point));
+                  WriteState::Aggregate(last_index) => {
+                    let (points, timestamp, ratio) = {
+                      let spp = self.archives[index].seconds_per_point();
+                      let ref last_archive = self.archives[last_index];
+                      let points_in_range = cmp::min((spp / last_archive.seconds_per_point()) as usize, last_archive.points());
+                      let timestamp = point.0 - (point.0 % spp);
+                      let from = archive::BucketName(timestamp);
+                      let points = &mut max_points[0..points_in_range];
+                      last_archive.read_points(from, points).unwrap();
+                      let ratio = points.iter().filter(|&&Point(t, _)| t >= timestamp).count() as f32 / points_in_range as f32;
+                      (points, timestamp, ratio)
+                    };
+
+                    if ratio >= self.header.x_files_factor() {
+                      point.0 = timestamp;
+                      point.1 = self.header.aggregation_type().aggregate(points, timestamp);
+                      self.archives[index].write(&point);
+                      WriteState::Aggregate(index)
+                    } else {
+                      WriteState::Finished
+                    }
+                  },
+
+                  WriteState::Finished => WriteState::Finished
+                }
+            });
 	}
 
         fn read_all(&self) -> Vec<Vec<Point>> {
