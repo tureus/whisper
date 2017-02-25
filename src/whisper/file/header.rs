@@ -38,14 +38,15 @@ impl fmt::Display for AggregationType {
 impl AggregationType {
 	pub fn from_u32(val: u32) -> AggregationType {
 		match val {
-			_ => AggregationType::Average
+			2 => AggregationType::Sum,
+			_  => AggregationType::Average
 		}
 	}
 
 	pub fn to_u32(&self) -> u32 {
 		match *self {
-			AggregationType::Average => 0,
-			AggregationType::Sum => 10
+			AggregationType::Average => 1,
+			AggregationType::Sum => 2
 		}
 	}
 }

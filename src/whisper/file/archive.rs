@@ -154,7 +154,7 @@ impl Archive {
     }
 
     #[inline]
-    fn slice(&self) -> &[u8] {
+    pub fn slice(&self) -> &[u8] {
         unsafe{ self.mmap_view.as_slice() }
     }
 
@@ -168,7 +168,7 @@ impl Archive {
 mod tests {
     use super::*;
     use super::super::super::point::Point;
-    use std::io::{Write, Cursor, Error};
+    use std::io::{Write, Cursor};
     use memmap::{ Mmap, Protection };
 
     // ruby -e "%Q{`hexdump -v -e '"0x" 1/1 "%02X, "' blah.wsp`}.split(', ').each_slice(4){|arr| puts arr.join(',') + ',' }"
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_read_from_middle(){
         let anon_view = build_mmap().into_view_sync();
-        let mut archive = Archive::new(2, 3, anon_view);
+        let archive = Archive::new(2, 3, anon_view);
         assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
         assert_eq!(archive.seconds_per_point(), 2);
         assert_eq!(archive.points(), 3);
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn test_read_from_end(){
         let anon_view = build_mmap().into_view_sync();
-        let mut archive = Archive::new(2, 3, anon_view);
+        let archive = Archive::new(2, 3, anon_view);
         assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
         assert_eq!(archive.seconds_per_point(), 2);
         assert_eq!(archive.points(), 3);
@@ -320,7 +320,7 @@ mod tests {
     #[test]
     fn test_read_too_large() {
         let anon_view = build_mmap().into_view_sync();
-        let mut archive = Archive::new(2, 3, anon_view);
+        let archive = Archive::new(2, 3, anon_view);
         assert_eq!(archive.anchor_bucket_name(), BucketName(1440392088) );
         assert_eq!(archive.seconds_per_point(), 2);
         assert_eq!(archive.points(), 3);
@@ -352,7 +352,7 @@ mod tests {
         {
             let mut points_buf = Vec::with_capacity(3);
             unsafe{ points_buf.set_len(3) };
-            archive.read_points(BucketName(0), &mut points_buf[..]);
+            archive.read_points(BucketName(0), &mut points_buf[..]).unwrap();
             let expected = vec![
                 Point(1440392088, 100.0),
                 Point(1440392090, 100.0),
@@ -366,7 +366,7 @@ mod tests {
             assert_eq!(archive.archive_index(&bucket_name).0, 1);
 
             unsafe{ points_buf.set_len(1) };
-            archive.read_points(bucket_name, &mut points_buf[..]);
+            archive.read_points(bucket_name, &mut points_buf[..]).unwrap();
             assert_eq!(points_buf[0].0, 1440392090);
             assert_eq!(points_buf[0].1, 8.0);
         }
