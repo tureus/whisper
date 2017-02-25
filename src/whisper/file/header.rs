@@ -8,21 +8,21 @@ use super::super::point;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum AggregationType {
-        Average = 1,
-	Sum = 2
+    Average = 1,
+    Sum = 2
 }
 
 impl AggregationType {
-  pub fn aggregate(&self, points: &[point::Point]) -> f64 {
-      match *self {
-        AggregationType::Average => {
-          if points.is_empty() { return 0.0 };
-          let count = points.len() as f64;
-          let sum: f64 = points.iter().map(point::Point::value).sum();
-          sum / count
-        },
-        AggregationType::Sum => points.iter().map(point::Point::value).sum()
-      }
+    pub fn aggregate(&self, points: &[point::Point]) -> f64 {
+        match *self {
+            AggregationType::Average => {
+                if points.is_empty() { return 0.0 };
+                let count = points.len() as f64;
+                let sum: f64 = points.iter().map(point::Point::value).sum();
+                sum / count
+            },
+            AggregationType::Sum => points.iter().map(point::Point::value).sum()
+        }
     }
 }
 

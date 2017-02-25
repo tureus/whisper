@@ -53,7 +53,7 @@ impl Archive {
 
     pub fn read_points(&self, from: BucketName, points: &mut[Point]) -> Result<()> {
         if self.points() < points.len() {
-          return Err(Error::new(ErrorKind::InvalidInput, format!("Points requested exceeds archive retention period. Requested: {}, Available: {}", points.len(), self.points())));
+            return Err(Error::new(ErrorKind::InvalidInput, format!("Points requested exceeds archive retention period. Requested: {}, Available: {}", points.len(), self.points())));
         }
 
         let start = self.archive_index(&from);
@@ -73,7 +73,7 @@ impl Archive {
 
             let (first_buf, second_buf) = points.split_at_mut(first_data.chunks(point::POINT_SIZE).len());
             Archive::write_data_as_points_to_slice(first_data, first_buf).and_then(|_| {
-              Archive::write_data_as_points_to_slice(second_data, second_buf)
+                Archive::write_data_as_points_to_slice(second_data, second_buf)
             })
         } else {
             let start_index = start.0 as usize * point::POINT_SIZE;

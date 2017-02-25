@@ -152,9 +152,9 @@ impl WhisperFile {
             if elapsed < 0 || elapsed as u32 >= self.header.max_retention() { return; }
 
             enum WriteState {
-              Initial,
-              Aggregate(usize),
-              Finished
+                Initial,
+                Aggregate(usize),
+                Finished
             };
 
             (0..self.archives.len()).fold(WriteState::Initial, |state, index| {
@@ -169,32 +169,32 @@ impl WhisperFile {
                   },
 
                   WriteState::Aggregate(last_index) => {
-                    let (points, timestamp, ratio) = {
-                        let seconds_per_point = self.archives[index].seconds_per_point();
-                        let ref last_archive = self.archives[last_index];
-                        let candidate_point_count = cmp::min((seconds_per_point / last_archive.seconds_per_point()) as usize, last_archive.points());
-                        let timestamp = point.0 - (point.0 % seconds_per_point);
-                        let from = archive::BucketName(timestamp);
-                        let mut candidate_points: Vec<Point> = repeat(Point::default()).take(candidate_point_count).collect();
-                        last_archive.read_points(from, &mut candidate_points).unwrap();
-                        let points = candidate_points
-                            .into_iter()
-                            .enumerate()
-                            .filter(|&(i, Point(t, _))| timestamp + (i as u32) * last_archive.seconds_per_point() == t)
-                            .map(|(_, p)| p)
-                            .collect::<Vec<Point>>();
-                        let ratio = points.len() as f32 / candidate_point_count as f32;
-                        (points, timestamp, ratio)
-                    };
+                      let (points, timestamp, ratio) = {
+                          let seconds_per_point = self.archives[index].seconds_per_point();
+                          let ref last_archive = self.archives[last_index];
+                          let candidate_point_count = cmp::min((seconds_per_point / last_archive.seconds_per_point()) as usize, last_archive.points());
+                          let timestamp = point.0 - (point.0 % seconds_per_point);
+                          let from = archive::BucketName(timestamp);
+                          let mut candidate_points: Vec<Point> = repeat(Point::default()).take(candidate_point_count).collect();
+                          last_archive.read_points(from, &mut candidate_points).unwrap();
+                          let points = candidate_points
+                              .into_iter()
+                              .enumerate()
+                              .filter(|&(i, Point(t, _))| timestamp + (i as u32) * last_archive.seconds_per_point() == t)
+                              .map(|(_, p)| p)
+                              .collect::<Vec<Point>>();
+                          let ratio = points.len() as f32 / candidate_point_count as f32;
+                          (points, timestamp, ratio)
+                      };
 
-                    if ratio >= self.header.x_files_factor() {
-                        point.0 = timestamp;
-                        point.1 = self.header.aggregation_type().aggregate(&points);
-                        self.archives[index].write(&point);
-                        WriteState::Aggregate(index)
-                    } else {
-                        WriteState::Finished
-                    }
+                      if ratio >= self.header.x_files_factor() {
+                          point.0 = timestamp;
+                          point.1 = self.header.aggregation_type().aggregate(&points);
+                          self.archives[index].write(&point);
+                          WriteState::Aggregate(index)
+                      } else {
+                          WriteState::Finished
+                      }
                   },
 
                   WriteState::Finished => WriteState::Finished
@@ -259,20 +259,20 @@ mod tests {
          *   hexdump -v -e '"0x" 1/1 "%02X, "' <filename>
         */
 	const SAMPLE_EMPTY_FILE : [u8; 88] = [
-		0x00, 0x00, 0x00, 0x01, // agg type = 1 = Average
-		0x00, 0x00, 0x01, 0x2C, // max ret
-		0x3F, 0x00, 0x00, 0x00, // xff = 0.5
-		0x00, 0x00, 0x00, 0x01, // archive count = 1
-		0x00, 0x00, 0x00, 0x1C, // a1 offset
-		0x00, 0x00, 0x00, 0x3C, // a1 secs/point
-		0x00, 0x00, 0x00, 0x05, // a1 points
+            0x00, 0x00, 0x00, 0x01, // agg type = 1 = Average
+            0x00, 0x00, 0x01, 0x2C, // max ret
+            0x3F, 0x00, 0x00, 0x00, // xff = 0.5
+            0x00, 0x00, 0x00, 0x01, // archive count = 1
+            0x00, 0x00, 0x00, 0x1C, // a1 offset
+            0x00, 0x00, 0x00, 0x3C, // a1 secs/point
+            0x00, 0x00, 0x00, 0x05, // a1 points
 
-	// A1: 60 seconds per point, 5 minutes = 5 points
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            // A1: 60 seconds per point, 5 minutes = 5 points
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	];
 
         /* Sample File 1
@@ -470,15 +470,15 @@ mod tests {
             let schema = Schema::new_from_retention_specs(default_specs).unwrap();
             let mut file = WhisperFile::new_transient(&schema, header::AggregationType::Average, 0.0);
             for &(t, v) in [
-              (1487974954, 1.0),
-              (1487974956, 3.0),
-              (1487974959, 9.0),
-              (1487974962, 15.0),
-              (1487974965, 65.0),
-              (1487974968, 122.0),
-              (1487974970, 133.0)
+                (1487974954, 1.0),
+                (1487974956, 3.0),
+                (1487974959, 9.0),
+                (1487974962, 15.0),
+                (1487974965, 65.0),
+                (1487974968, 122.0),
+                (1487974970, 133.0)
             ].iter() {
-              file._write(&Point(t, v), t as i64);
+                file._write(&Point(t, v), t as i64);
             }
             let result: Vec<u8> = file.into_bytes().unwrap();
             assert_eq!(result, sample);
