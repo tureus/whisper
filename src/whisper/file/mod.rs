@@ -95,7 +95,7 @@ impl WhisperFile {
 
 		let header = Header::new(agg, schema.max_retention(), xff);
 		{
-			try!( opened_file.write_u32::<BigEndian>( header.aggregation_type.to_u32() ));
+			try!( opened_file.write_u32::<BigEndian>( header.aggregation_type as u32));
 			try!( opened_file.write_u32::<BigEndian>( header.max_retention ) );
 			try!( opened_file.write_f32::<BigEndian>( header.x_files_factor ) );
 			try!( opened_file.write_u32::<BigEndian>( schema.retention_policies.len() as u32 ) );
@@ -226,7 +226,7 @@ impl WhisperFile {
             use whisper::POINT_SIZE;
             let archives_start = Header::archives_start(self.archives.len());
             let mut bytes: Vec<u8> = vec![];
-            try!(bytes.write_u32::<BigEndian>(self.header.aggregation_type.to_u32()));
+            try!(bytes.write_u32::<BigEndian>(self.header.aggregation_type as u32));
             try!(bytes.write_u32::<BigEndian>(self.header.max_retention() as u32));
             try!(bytes.write_f32::<BigEndian>(self.header.x_files_factor()));
             try!(bytes.write_u32::<BigEndian>(self.archives.len() as u32));

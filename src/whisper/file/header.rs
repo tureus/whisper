@@ -6,10 +6,10 @@ use byteorder::{ ByteOrder, BigEndian };
 use super::archive::{ self, Archive };
 use super::super::point;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum AggregationType {
-        Average,
-	Sum
+        Average = 1,
+	Sum = 2
 }
 
 impl AggregationType {
@@ -40,13 +40,6 @@ impl AggregationType {
 		match val {
 			2 => AggregationType::Sum,
 			_  => AggregationType::Average
-		}
-	}
-
-	pub fn to_u32(&self) -> u32 {
-		match *self {
-			AggregationType::Average => 1,
-			AggregationType::Sum => 2
 		}
 	}
 }
