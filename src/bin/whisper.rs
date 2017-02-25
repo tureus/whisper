@@ -8,8 +8,7 @@ extern crate time;
 extern crate whisper;
 
 use docopt::Docopt;
-use whisper::{WhisperFile, Point, Schema};
-
+use whisper::{WhisperFile, Point, Schema, AggregationType};
 use std::path::Path;
 
 static USAGE: &'static str = "
@@ -126,7 +125,7 @@ fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
 fn cmd_create<P>(args: Args, path: P)
   where P: AsRef<Path> {
     let schema = Schema::new_from_retention_specs(args.arg_timespec).unwrap();
-    let new_result = WhisperFile::new(path, &schema);
+    let new_result = WhisperFile::new(path, &schema, AggregationType::Average, 0.5);
     match new_result {
     	// TODO change to Display
         Ok(whisper_file) => println!("Success! {:?}", whisper_file),

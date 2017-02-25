@@ -1,6 +1,6 @@
 // use carbon::CarbonMsg;
 // use whisper::{ WhisperFile, MutexWhisperFile };
-use whisper::{ WhisperFile, Schema };
+use whisper::{ WhisperFile, Schema, AggregationType };
 use std::path::{ Path, PathBuf };
 use std::fs::DirBuilder;
 use std::io::Result;
@@ -60,8 +60,7 @@ impl WhisperCache {
 					try!( DirBuilder::new().recursive(true).create( path_on_disk.parent().unwrap() ) );
 				}
 				debug!("`{:?}` must now be created", path_on_disk);
-				try!(WhisperFile::new(&path_on_disk, &self.schema))
-
+				try!(WhisperFile::new(&path_on_disk, &self.schema, AggregationType::Average, 0.5))
 			};
 
 			self.open_files.insert(path_in_cache.clone(), Arc::new(Mutex::new(whisper_file)));

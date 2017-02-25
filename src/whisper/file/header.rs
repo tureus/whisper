@@ -6,17 +6,31 @@ use byteorder::{ ByteOrder, BigEndian };
 use super::archive::{ self, Archive };
 use super::super::point;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum AggregationType {
-	Average,
-	Unknown
+    Average = 1,
+    Sum = 2
+}
+
+impl AggregationType {
+    pub fn aggregate(&self, points: &[point::Point]) -> f64 {
+        match *self {
+            AggregationType::Average => {
+                if points.is_empty() { return 0.0 };
+                let count = points.len() as f64;
+                let sum: f64 = points.iter().map(point::Point::value).sum();
+                sum / count
+            },
+            AggregationType::Sum => points.iter().map(point::Point::value).sum()
+        }
+    }
 }
 
 impl fmt::Display for AggregationType {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
 			AggregationType::Average => write!(f, "average"),
-			AggregationType::Unknown => write!(f, "unknown")
+			AggregationType::Sum => write!(f, "sum")
 		}
 	}
 }
@@ -24,14 +38,8 @@ impl fmt::Display for AggregationType {
 impl AggregationType {
 	pub fn from_u32(val: u32) -> AggregationType {
 		match val {
-			_ => AggregationType::Unknown
-		}
-	}
-
-	pub fn to_u32(&self) -> u32 {
-		match *self {
-			AggregationType::Average => 0,
-			AggregationType::Unknown => 10
+			2 => AggregationType::Sum,
+			_  => AggregationType::Average
 		}
 	}
 }
