@@ -3,6 +3,8 @@ Whisper
 
 A turbo-charged whisper database implementation.
 
+[![Build status](https://api.travis-ci.org/tureus/whisper.png)](https://travis-ci.org/tureus/whisper)
+
 Open tasks
 ----
 
