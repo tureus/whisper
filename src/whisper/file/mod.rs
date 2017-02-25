@@ -13,13 +13,14 @@ pub use self::archive::ARCHIVE_INFO_SIZE;
 
 use whisper::Point;
 use whisper::Schema;
+use std::io::Result;
 
 // Modules needed to create file on disk
 use std::fs::OpenOptions;
 extern crate libc;
 use self::libc::ftruncate;
 use std::os::unix::prelude::AsRawFd;
-use std::io::{ self, Error};
+use std::io;
 use std::path::{ Path, PathBuf };
 use std::fmt;
 use std::cmp;
@@ -76,7 +77,7 @@ Archive {} data:
 }
 
 impl WhisperFile {
-	pub fn new<P>(path: P, schema: &Schema, agg: AggregationType, xff: f32) -> io::Result<WhisperFile>
+	pub fn new<P>(path: P, schema: &Schema, agg: AggregationType, xff: f32) -> Result<WhisperFile>
         where P: AsRef<Path> {
 		let mut opened_file = try!(OpenOptions::new().read(true).write(true).create(true).open(path.as_ref()));
 
@@ -89,7 +90,7 @@ impl WhisperFile {
 				ftruncate(raw_fd, size_needed as i64)
 			};
 			if retval != 0 {
-				return Err(Error::last_os_error());
+				return Err(io::Error::last_os_error());
 			}
 		}
 
@@ -110,17 +111,18 @@ impl WhisperFile {
 			archive_offset = archive_offset + retention_policy.size_on_disk();
 		}
 
-		let mmap = Mmap::open(&opened_file, Protection::ReadWrite ).unwrap();
-
-		Ok( WhisperFile::open_mmap(path.as_ref(), mmap) )
+		Mmap::open(&opened_file, Protection::ReadWrite).map(|mmap| {
+		    WhisperFile::open_mmap(path.as_ref(), mmap)
+                })
 	}
 
 	// TODO: open should validate contents of whisper file
 	// and return Result<WhisperFile, io::Error>
-	pub fn open<P>(path: P) -> WhisperFile
+	pub fn open<P>(path: P) -> Result<WhisperFile>
         where P: AsRef<Path> {
-		let mmap = Mmap::open_path(path.as_ref(), Protection::ReadWrite).unwrap();
-		WhisperFile::open_mmap(path.as_ref(), mmap)
+                  Mmap::open_path(path.as_ref(), Protection::ReadWrite).map(|mmap| {
+                      WhisperFile::open_mmap(path.as_ref(), mmap)
+                  })
 	}
 
 	fn open_mmap<P>(path: P, mmap: Mmap) -> WhisperFile
@@ -222,7 +224,7 @@ impl WhisperFile {
         }
 
         #[cfg(test)]
-        fn into_bytes(self) -> io::Result<Vec<u8>> {
+        fn into_bytes(self) -> Result<Vec<u8>> {
             use whisper::POINT_SIZE;
             let archives_start = Header::archives_start(self.archives.len());
             let mut bytes: Vec<u8> = vec![];
@@ -230,7 +232,7 @@ impl WhisperFile {
             try!(bytes.write_u32::<BigEndian>(self.header.max_retention() as u32));
             try!(bytes.write_f32::<BigEndian>(self.header.x_files_factor()));
             try!(bytes.write_u32::<BigEndian>(self.archives.len() as u32));
-            try!(self.archives.iter().fold(Ok(archives_start), |archive_offset: io::Result<usize>, archive| {
+            try!(self.archives.iter().fold(Ok(archives_start), |archive_offset: Result<usize>, archive| {
                 archive_offset.and_then(|offset| {
                     try!(bytes.write_u32::<BigEndian>(offset as u32));
                     try!(bytes.write_u32::<BigEndian>(archive.seconds_per_point()));

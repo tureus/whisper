@@ -8,8 +8,7 @@ extern crate time;
 extern crate whisper;
 
 use docopt::Docopt;
-use whisper::{ WhisperFile, Point, Schema, AggregationType };
-
+use whisper::{WhisperFile, Point, Schema, AggregationType};
 use std::path::Path;
 
 static USAGE: &'static str = "
@@ -92,32 +91,35 @@ fn cmd_dump<P>(path: P)
 #[allow(unused_variables)] /*TODO: Remove once we reenable writing current_time*/
 fn cmd_update<P>(args: Args, path: P, current_time: u64)
   where P: AsRef<Path> {
-    let mut file = WhisperFile::open(path);
-    let point = Point(args.arg_timestamp.parse::<u32>().unwrap(),
-        					args.arg_value.parse::<f64>().unwrap());
-    debug!("Updating TS: {} with value: {}", point.0, point.1);
+    WhisperFile::open(path).map(|mut file| {
+      let point = Point(args.arg_timestamp.parse::<u32>().unwrap(),
+                        args.arg_value.parse::<f64>().unwrap());
+      debug!("Updating TS: {} with value: {}", point.0, point.1);
 
-    file.write(/*current_time, TODO: reenable */ &point);
+      file.write(/*current_time, TODO: reenable */ &point);
+    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e))
 }
 
 fn cmd_mark<P>(args: Args, path: P, current_time: u64)
   where P: AsRef<Path> {
-    let mut file = WhisperFile::open(path);
-    let point = Point(current_time as u32, args.arg_value.parse::<f64>().unwrap());
+    WhisperFile::open(path).map(|mut file| {
+      let point = Point(current_time as u32, args.arg_value.parse::<f64>().unwrap());
 
-    file.write(/*current_time, TODO: reenable */ &point);
+      file.write(/*current_time, TODO: reenable */ &point);
+    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e))
 }
 
 fn cmd_thrash<P>(args: Args, path: P, current_time: u64)
   where P: AsRef<Path> {
     let times = args.arg_times.parse::<u32>().unwrap();
-    let mut file = WhisperFile::open(path);
-    for index in 1..times {
-        let point = Point(current_time as u32+index,
-        				  args.arg_value.parse::<f64>().unwrap());
+    WhisperFile::open(path).map(|mut file| {
+      for index in 1..times {
+          let point = Point(current_time as u32+index,
+                            args.arg_value.parse::<f64>().unwrap());
 
-        file.write(&point);
-    }
+          file.write(&point);
+      }
+    }).unwrap_or_else(|e| println!("Unable to open whisper file: {}", e))
 }
 
 fn cmd_create<P>(args: Args, path: P)
